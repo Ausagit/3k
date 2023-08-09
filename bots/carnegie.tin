@@ -1,0 +1,18 @@
+#class {bot} {open}
+
+#variable {no_loop} {1}
+#variable {no_home} {1}
+#variable {hardmode} {0}
+#variable {vacuum} {0}
+
+#variable {botpath} {guildsetup;n;w;w;w;n;w;w;out;e;e;e;e;e;e;out;ne;ne;n;w;w;w;w;w;w;w;w;w;s;se;se;e;n;w;e;e;e;e;e;ne;w;w;w;w;w;w;w;n;n;e;e;e;e;e;e;e;n;w;w;w;w;w;w;w;n;e;e;e;e;e;e;e;n;w;w;w;w;w;w;w;n;nw;se;e;e;e;e;e;e;e;ne;sw;s;s;s;s;s;s;sw;w;s;s;s}
+
+#action {^=M= {A New Yorker \(waiting in line\)|An Usher|A bodyguard \(ex-mafia\)|A Lady \(waiting to use the toilet\)|A polite audience member|An angry audience member|A sleeping audience member|An audience member rushing to get to his seat}}
+{
+	#variable mobname human;
+	_check_mob
+}
+
+#action {^There is no %1 here} { #if {{%1} == {$mobname}} {..} }
+
+#class {bot} {close}
