@@ -1,0 +1,18 @@
+#class {bot} {open}
+
+#nop 32k
+
+#var {no_loop} {1}
+#var {no_home} {1}
+#var {hardmode} {0}
+#var {vacuum} {0}
+
+#variable {botpath} {nw;n;w;w;nw;n;e;s;nw;n;n;ne;e;e;nw;e;se;se;s;s;s;sw;ne;w;w;w;e;e;sw;s;se}
+
+#action {^=M= {Elven Guard}}
+{
+    #variable {mobname} {guard};
+    _check_mob
+}
+
+#class {bot} {close}
