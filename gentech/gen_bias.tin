@@ -1,0 +1,217 @@
+#nop gen_bias.tin
+/*
+	Allows you to automatically change bias when entering an area, based on a preconfigured list of area::dbias entries.
+	The data is automatically saved to the file .tt/3k/char/<charname>-bias.tin file.
+	
+	Add guildsetup as the first command in the area's botpath variable add a guildsetup alias to your gentech.tin file.
+	Add 'bias run' to the alias.
+
+	Commands:
+	bias add <area> <dbias>		- add the desired defense bias fror the area
+	bias remove <area>			- remove the area from the list
+	bias enable					- enable automatic bias changes (default)
+	bias disable				- disable automatic bias changes
+	bias run					- start the bias change for the currently loaded stepper file, $bots[stepper]
+	bias						- dispaly the list of areas and defense biases
+	cdb <value> <opt command>	- switch defense bias and execute command when complete
+	cab <value> <opt command>	- switch offense bias and execute command when complete
+*/
+
+#class {genbiases} {kill}
+#class {mybiases} {kill}
+#class {genbiases} {open}
+
+#nop read the configured area biases for the current character
+#class {mybiases} {read} {.tt/char/$ses_name-bias.tin}
+#class {mybiases} {size} {mybiasessize};
+
+#if {$mybiasessize == 0} {
+	#echo {Bias file not found, creating default.};
+	#class {mybiases} {kill};
+	#class {mybiases} {open};
+	#variable {biases} {};
+	#class {mybiases} {close};
+	#class {mybiases} {save};
+	#class {mybiases} {write} {.tt/char/$ses_name-bias.tin};
+	#unvariable {mybiasessize}
+}
+
+#variable {gen_bias_module} {1}
+#variable {biases_enabled} {1}
+#variable {onbiaslock} {}
+
+/*
+	Change defense bias, called by genbias, or can be used manually
+	cdb <value> <optional command to execute when complete>
+*/
+#alias {cdb}
+{
+	#local {args} {%0};
+	#local {onbias} {};
+	#local {dbias} {0};
+
+	#regexp {$args} {%d %+} {
+		#variable {dbias} {&1};
+		#variable {onbias} {&2}
+	} {
+		#variable {dbias} {%1}
+	};
+
+	#if {$dbias >= 1 && $dbias <= 190} {
+		#if {$dbias == $gentech[bias][def]} {
+			#echo {<fca>Already at $gentech[bias][def] defense bias.<088>};
+			#variable {onbiaslock} {$onbias};
+			#if {"$onbias" != ""} {
+				#delay {2} {
+					$onbiaslock;
+					#variable {onbiaslock} {}
+				}
+			}
+		}; #else {
+			#if {"$gentech[bias][mode]" == "Locked"} {
+				#send !biaslock
+			};
+			#if {$dbias > $gentech[bias][def]} {
+				#send !conform defense bias $dbias
+			}; #else {
+				#local {oppbias} {};
+				#math  {oppbias} {190 - $dbias};
+				#send !conform attack bias $oppbias
+			};
+			#variable {onbiaslock} {$onbias};
+			#if {"$onbias" != ""} {
+				#echo {<fca>Executing $onbiaslock when bias change is complete.<088>}
+			}
+		}
+	}; #else {
+		#echo {<fca>Syntax is cdb <defense bias> <optional command to execute upon completion>.<088>}
+	}
+}
+
+/*
+	Change attack bias, called by genbias, or can be used manually.
+	cab <value> <optional command to execute when complete>
+*/
+#alias {cab}
+{
+	#local {args} {%0};
+	#local {onbias} {};
+	#local {abias} {0};
+
+	#regexp {$args} {%d %+} {
+		#variable {abias} {&1};
+		#variable {onbias} {&2}
+	} {
+		#variable {abias} {%1}
+	};
+
+	#if {$abias >= 1 && $abias <= 190} {
+		#if {$abias == $gentech[bias][atk]} {
+			#echo {<fca>Already at $gentech[bias][atk] attack bias.<088>};
+			#variable {onbiaslock} {$onbias};
+			#if {"$onbias" != ""} {
+				#delay {2} {
+					$onbiaslock;
+					#variable {onbiaslock} {}
+				}
+			}
+		}; #else {
+			#if {"$gentech[bias][mode]" == "Locked"} {
+				#send !biaslock
+			};
+			#if {$abias > $gentech[bias][atk]} {
+				#send !conform attack bias $abias
+			}; #else {
+				#local {oppbias} {};
+				#math  {oppbias} {190 - $abias};
+				#send !conform defense bias $oppbias
+			};
+			#variable {onbiaslock} {$onbias};
+			#if {"$onbias" != ""} {
+				#echo {<fca>Executing $onbiaslock when bias change is complete.<088>}
+			}
+		}
+	}; #else {
+		#echo {<fca>Syntax is cab <attack bias> <optional command to execute upon completion>.<088>}
+	}
+}
+
+/*
+	Execute the optional commands from cab/cdb upon reaching the target bias
+*/
+#action {^        BIAS CONFORMATION HAS REACHED SPECIFIED DIFFERENTIAL}
+{
+	#send !biaslock;
+	#if {"$onbiaslock" != ""} {
+		$onbiaslock;
+		#variable {onbiaslock} {}
+	}
+}
+
+#alias {bias}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#if {"%2" != "" && "%3" != "" && %3 >= 0 && %3 <= 190} {
+				#variable {biases[%2]} {%3};
+				#class {mybiases} {write} {.tt/char/$ses_name-bias.tin};
+				#echo {<fca>Area %2 bias set to %3.<088>}
+			} {
+				#echo {<fca>Invalid arguments, example usage: bias set aegis 90<088>}
+			}
+		};
+		#case "remove" {
+			#if {"%2" != ""} {
+				#unvariable {biases[%2]};
+				#class {mybiases} {write} {.tt/char/$ses_name-bias.tin};
+				#echo {<fca>Area %2 bias removed.<088>}
+			} {
+				#echo {<fca>Invalid arguments, example usage: bias claer aegis<088>}
+			}
+		};
+		#case "on" {
+			#variable {biases_enabled} {1};
+			#echo {<fca>Automatic area bias changes enabled.<088>}
+		};
+		#case "off" {
+			#variable {biases_enabled} {0};
+			#echo {<fca>Automatic area bias changes disabled.<088>}
+		};
+		#case "run" {
+			#local {handled} {0};
+			#if {$biases_enabled} {
+				#if {"$bots[stepper]" == ""} {
+					#echo {<fca>No stepper loaded!<088>};
+					#local {handled} {1};
+				} {
+					#if {"$biases[$bots[stepper]]" != ""} {
+						cdb $biases[$bots[stepper]] ..;
+						#local {handled} {1}
+					}
+				}
+			};
+			#if {$handled == 0} {
+				#delay {2} {..}
+			}
+		};
+		#default {
+			#local {biasout} {<228> +--------------------------+<088>};
+			#if {$biases_enabled} {
+				#format {biasout} {%s\n<228> |<138> Defense Biases      [on] <228>|<088>} {$biasout}
+			} {
+				#format {biasout} {%s\n<228> |<138> Defense Biases     [off] <228>|<088>} {$biasout}
+			};
+			#format {biasout} {%s\n<228> +--------------------------+<088>} {$biasout};
+			#if {&{biases[]} == 0} {
+				#format {biasout} {%s\n<228> |<178>      No Biases set       <228>|<088>} {$biasout};
+			} {
+				#foreach {*biases[%*]} {name} {
+					#format {biasout} {%s\n<228> |<148> %+3s - %-18s <088><228>|<088>} {$biasout} {$biases[$name]} {$name}
+				}				
+			};
+			#echo {%s\n<228> +--------------------------+<088>} {$biasout};
+		}
+	}
+}
+
+#class {biases} {close}

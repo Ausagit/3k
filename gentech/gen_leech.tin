@@ -1,0 +1,61 @@
+#nop gen_leech.tin
+/*
+    Utility for leeching PU from another gentech.
+    Modify the two actions at the bottom of the file to suit your preference.
+
+    In your gentech.tin file turn off auto reclaim functions while $leech_on == 1.
+
+    Commands:
+    leech <name>        - Starts a ticker to poke <name> every 10 seconds if your PU is below 33%
+    leech off           - Turns off the leeching and ticker
+*/
+
+#class {genleech} {kill}
+#class {genleech} {open}
+
+#variable {gen_leech_module} {1}
+#variable {leech_on} {0}
+#variable {leech_from} {}
+
+#alias {leech}
+{
+    #if {"%1" == "off"} {
+        #kill {tick} {leech};
+        #variable {leech_on} {0};
+        #echo {<fdc>You are no longer leeching.<088>}
+    }; #elseif {"%1" == ""} {
+        #if {$leech_on} {
+            #echo {<fdc>You are currently leeching from %n.<088>} {$leech_from}
+        } {
+            #echo {<fdc>You are not leeching from anyone.<088>}
+        }
+    }; #else {
+        #format {leech_from} {%l} {%1};
+        #variable {leech_on} {1};
+        #kill {tick} {leech};
+        #ticker {leech} {
+            #if {$my[gp1][current] / $my[gp1][max] < 0.33} {poke $leech_from}
+        } {10};
+        #echo {<fdc>You are now leeching from from %n.<088>} {$leech_from}
+    }
+}
+
+#action {^You are no longer leeching}
+{
+    #if {$gen_tactical_module} {
+        tac enable
+    };    
+    cte
+}
+
+#action {^You are now leeching from %1}
+{
+    #nop use the bigger Gen's tactical/stabilize/repair, disable your corpse trigger and assist;
+    #if {$gen_tactical_module} {
+        tac disable
+    };
+    ctd;
+    cassist %1
+}
+
+#class {genleech} {close}
