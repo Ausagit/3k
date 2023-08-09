@@ -1,0 +1,33 @@
+#class {bot} {open}
+
+#nop 15-24k
+
+#variable {no_loop} {1}
+#variable {no_home} {1}
+#variable {hardmode} {0}
+#variable {vacuum} {0}
+
+#variable {botpath} {se;se;e;e;ne;ne;sw;sw;s;s;sw;s;s;se;se;e;w;se;s;n;e;e;w;w;nw;nw;s;s;s;s;sw;se;e;w;s;s;s;s;e;w;n;n;n;n;nw;sw;w;e;s;s;w;e;{open door;s};s;w;e;n;n;n;n;ne;nw;e;w;n;n;n;n;sw;w;e;s;w;e;sw;ne;n;ne;ne;n;n;nw;n;n;nw;nw}
+
+#action {^=M= {A big ant|A large ant|A drow elf|A drow elf guard|A drow elf elite guard|Tilasmana the drow elf sorceress|Trahnon the drow elf wizard|Wartnifflium the drow elf warrior|Vagramon the drow elf ranger|Durhal the exiled|Telina the exiled|Sulina the drow elf temptress|Jipona the drow elf}}
+{
+	#switch {"%1"}
+    {
+		#case {"A big ant"} {#variable mobname ant};
+        #case {"A large ant"} {#variable mobname ant};
+        #case {"A drow elf"} {#variable mobname drow};
+        #case {"A drow elf guard"} {#variable mobname drow};
+        #case {"A drow elf elite guard"} {#variable mobname drow};
+        #case {"Tilasmana the drow elf sorceress"} {#variable mobname drow};
+        #case {"Trahnon the drow elf wizard"} {#variable mobname drow};
+        #case {"Wartnifflium the drow elf warrior"} {#variable mobname drow};
+        #case {"Vagramon the drow elf ranger"} {#variable mobname drow};
+        #case {"Durhal the exiled"} {#variable mobname drow};
+        #case {"Telina the exiled"} {#variable mobname drow};
+        #case {"Sulina the drow elf temptress"} {#variable mobname drow};
+        #case {"Jipona the drow elf"} {#variable mobname drow}
+	};
+	_check_mob
+}
+
+#class {bot} {close}

@@ -1,0 +1,28 @@
+#class {bot} {open}
+
+#variable {no_loop} {1}
+#variable {no_home} {1}
+#variable {hardmode} {1}
+#variable {vacuum} {0}
+
+#nop Chaos Demon can fear;
+
+#variable {botpath} {s;e;n;se;sw;e;e;e;n;n;sw;s;se;w;w;s;w;s;e;ne;s;s;s;ne;s;s;ne;s;s;nw;n;nw;nw;n;n;n;n;nw;w}
+
+#action {^=M= {A rabid wolf|A warped panther|A phoenix recruit|A phoenix guard|A chaos imp|A chaos demon}}
+{
+	#switch {"%1"}
+	{
+		#case {"A rabid wolf"}			{#variable mobname wolf};
+		#case {"A warped panther"}		{#variable mobname panther};
+		#case {"A phoenix recruit"}		{#variable mobname recruit};
+		#case {"A phoenix guard"}		{#variable mobname guard};
+		#case {"A chaos imp"}			{#variable mobname imp};
+		#case {"A chaos demon"}			{#variable mobname demon}
+	};
+	_check_mob
+}
+
+#class {bot} {close}
+
+#nop bariarian_plains;

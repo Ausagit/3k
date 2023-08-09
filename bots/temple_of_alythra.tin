@@ -1,0 +1,31 @@
+#class {bot} {open}
+
+#variable {no_loop} {1}
+#variable {no_home} {1}
+#variable {hardmode} {0}
+#variable {vacuum} {0}
+
+#if {$hardmode} {
+	#variable {botpath} {n;n;s;w;w;ne;sw;n;n;n;se;nw;e;e;e;e;sw;ne;s;s;s;nw;se;n;n;n;w;w;s;u;s;n;n;w;s;n;e;e;s;n;w;s;u;s;n;d;d;n;e;e;s;s;s;w;w;s} } {
+	#variable {botpath} {n;n;s;w;w;ne;sw;n;n;n;se;nw;e;e;e;e;sw;ne;s;s;s;nw;se;n;n;n;w;w;s;u;s;n;n;w;s;n;e;e;s;n;w;s;u;d;d;n;e;e;s;s;s;w;w;s}
+}
+
+#nop Alythra at the top of the tower is 122k;
+
+#action {^=M= {An apprentice cultist|A junior cultist|Senior Cultist, Ludel|Senior Cultist, Nyskel|Senior Cultist, Serdra|Senior Cultist, Woreef|Senior Cultist, Risenn|Senior Cultist, Shautden}}
+{
+	#switch {"%1"}
+	{
+		#case {"An apprentice cultist"}		{#variable mobname cultist};
+		#case {"A junior cultist"}		    {#variable mobname cultist};
+		#case {"Senior Cultist, Ludel"}		{#variable mobname cultist};
+		#case {"Senior Cultist, Nyskel"}	{#variable mobname cultist};
+		#case {"Senior Cultist, Serdra"}	{#variable mobname cultist};
+		#case {"Senior Cultist, Woreef"}	{#variable mobname cultist};
+        #case {"Senior Cultist, Risenn"}	{#variable mobname cultist};
+        #case {"Senior Cultist, Shautden"}	{#variable mobname cultist}
+	};
+	_check_mob
+}
+
+#class {bot} {close}

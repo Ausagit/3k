@@ -1,0 +1,24 @@
+#class {bot} {open}
+
+#nop 58k to 182k
+
+#var {no_loop} {0}
+#var {no_home} {1}
+#var {hardmode} {0}
+#var {vacuum} {0}
+
+#var {botpath} {s;e;s;e;w;w;w;s;e;e;e;s;w;w;w;s;e;e;e;e;e;e;e;e;e;w;w;s;w;w;w;w;w;w;s;e;e;e;e;e;w;w;s;w;w;n;n;n;n;;e;e;e;e;e;e;e;e;e;w;w;w;w;w;w;w;w;w;w;n;n;n;n}
+
+#act {^=M= {Funk on the Move|A funkmonk|A purple splotted four legged bush|A dark blotch of nofunk|A wadded up lump of pure funk}} {
+	#switch {"%1"} {
+		#case {"Funk on the Move"}		{#var mobname funk};
+		#case {"A funkmonk"}		{#var mobname funkmonk};
+		#case {"A purple splotted four legged bush"}		{#var mobname bush};
+		#case {"A dark blotch of nofunk"}		{#var mobname blotch};
+		#case {"A wadded up lump of pure funk"}		{#var mobname funk};
+		#default		{#var mobname funk}
+	};
+	_check_mob
+}
+
+#class {bot} {close}
