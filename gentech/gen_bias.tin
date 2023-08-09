@@ -57,7 +57,7 @@
 		#variable {dbias} {%1}
 	};
 
-	#if {$dbias >= 1 && $dbias <= 190} {
+	#if {$dbias >= 0 && $dbias <= 190} {
 		#if {$dbias == $gentech[bias][def]} {
 			#echo {<fca>Already at $gentech[bias][def] defense bias.<088>};
 			#variable {onbiaslock} {$onbias};
@@ -105,7 +105,7 @@
 		#variable {abias} {%1}
 	};
 
-	#if {$abias >= 1 && $abias <= 190} {
+	#if {$abias >= 0 && $abias <= 190} {
 		#if {$abias == $gentech[bias][atk]} {
 			#echo {<fca>Already at $gentech[bias][atk] attack bias.<088>};
 			#variable {onbiaslock} {$onbias};
