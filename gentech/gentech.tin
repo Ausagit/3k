@@ -119,7 +119,7 @@
 */
 #action {^%1 pokes you in the ribs}
 {
-	#if {@storedcorpses{} > 4 && $my[gp1][current] > 3000 && $gentech[efield][num] > 0} {
+	#if {@storedcorpses{} > 4 && $my[gp1][perc] > 30 && $gentech[efield][num] > 0} {
 		#local {maxtransfer} {};
 		#math {maxtransfer} {$my[gp1][max] / 10};
 		#send !powerfeed @tolower{%1} $maxtransfer
@@ -189,14 +189,18 @@
 	};
 	#math {gentech[gxprc]} {$gentech[gxp][round] + $gentech[rc][round]};
 
+	#nop create a few GP percentages;
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
+	#math {my[gp2][perc]} {$my[gp2][current] * 100 / $my[gp2][max]};
+
 	#nop recharge PU from SPU - adjust to suit your specific requirements;
 	#nop at order 10, recharge when (SPU > 0) and (PU < 6300 or (SPU > 3915 and PU < 8730));
-	#if {($my[gp2][current] > 0) && (($my[gp1][current] / $my[gp1][max] < 0.7) || (($my[gp2][current] / $my[gp2][max] > 0.87) && ($my[gp1][current] / $my[gp1][max] < 0.97)))} {
+	#if {($my[gp2][current] > 0) && (($my[gp1][perc] < 70) || (($my[gp2][perc] > 87) && ($my[gp1][perc] < 97)))} {
 		#delay {recharge} {#send !recharge} {0.1}
 	};
 
 	#nop Refill SPU from corpses;
-	#if {($recently_reclaimed == 0) && ($leech_on == 0) && ($enemy[hp] > 5) && ($my[gp1][current] / $my[gp1][max] < 0.4)} {
+	#if {($recently_reclaimed == 0) && ($leech_on == 0) && ($enemy[hp] > 5) && ($my[gp1][perc] < 40)} {
 		#if {$reclaim_module} {
 			#nop the mu alias is part of the reclaim.tin module;
 			#delay {reclaim} {mu} {0.1}
