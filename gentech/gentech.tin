@@ -106,7 +106,7 @@
 		#send !divvy coins;
 		#delay {0.5} {#echo {<bfb>Corpse trigger is off.<088>}}
 	};
-	#if {$gen_tactical_module} {
+	#if {$gen_tactical_module && $gentech[efield][num] > 0} {
 		tac run
 	};
 	#if {$gen_onkill_module} {
@@ -119,21 +119,22 @@
 */
 #action {^%1 pokes you in the ribs}
 {
-	#if {@storedcorpses{} > 4 && $my[gp1][current] > 3000} {
-		#send !powerfeed @tolower{%1}
+	#if {@storedcorpses{} > 4 && $my[gp1][current] > 3000 && $gentech[efield][num] > 0} {
+		#local {maxtransfer} {};
+		#math {maxtransfer} {$my[gp1][max] / 10};
+		#send !powerfeed @tolower{%1} $maxtransfer
 	}
 }
 
 #action {^That player is not a member of the Gentech Guild}
 {
-	#if {@storedcorpses{} > 5 && $my[gp1][current] > 3000} {
-		#if {$corpses[coffin] > 0} {
-			#send !unwrap
-		}; #elseif {$corpses[freezer] > 0} {
-			#send !deslab
-		}; #else {
-			#send !uncooler corpse
-		}
+	#nop non-gentech has poked you, feed them a corpse;
+	#if {$corpses[coffin] > 0} {
+		#send !unwrap
+	}; #elseif {$corpses[freezer] > 0} {
+		#send !deslab
+	}; #else {
+		#send !uncooler corpse
 	}
 }
 
@@ -196,8 +197,8 @@
 
 	#nop Refill SPU from corpses;
 	#if {($recently_reclaimed == 0) && ($leech_on == 0) && ($enemy[hp] > 5) && ($my[gp1][current] / $my[gp1][max] < 0.4)} {
-		#nop the mu alias is part of the mask.tin module, replace with recharge & reclaim if not using it;
 		#if {$reclaim_module} {
+			#nop the mu alias is part of the reclaim.tin module;
 			#delay {reclaim} {mu} {0.1}
 		} {
 			#delay {reclaim} {
