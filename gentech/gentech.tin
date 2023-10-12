@@ -50,7 +50,7 @@
 	dungeons;
 	#nop switch scaler using the scaler module;
 	#if {$scalers_module} {
-		scalers run
+		scaler run
 	};
 	#nop switch bias using the gen_bias module, it will .. when bias change is finished or not required;
 	#if {$gen_bias_module} {
