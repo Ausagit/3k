@@ -1,0 +1,61 @@
+#nop Still a work in progress!
+
+#class {bot} {open}
+
+#var {no_loop} {1}
+#var {no_home} {1}
+#var {hardmode} {0}
+#var {vacuum} {1}
+#var {no_player} {1}
+
+#variable {botpath} {guildsetup;path;n;enter;out;e;s;n;n;e;{pull latch;d};{search bed;..};u;w;s;e;enter;{shake lump;..};out;w;w;w;enter;out;climb;s;n;n;s;climb;n;e;n;n;enter;out;s;s;e;rollout;{search forest;path};w;w;n;s;s;s;enter;w;n;{knock on door;open door;..};s;e;e;e;{search east wall;open door;e};{search hay;look at body;..};w;n;n;{pry board;d};n;{turn latch;open door;poke embers;grab diamond};s;u;n;w;{search skulls;..};e;n;w;e;{sit chair;enter;sit and wait;..};door;s;s;s;s;w;w;out;n;n;n;e;e;e;rollout;castle;enter;w;e;e;w;n;n;{open cage;get diamond;enter};fly back}
+
+#action {^=M= {Birthday Bear|Tenderheart|Secret Bear|Stupidheart Bear|Bleedingheart Bear|Smallheart Bear|Bitterheart Bear|Wish Bear|Luck Bear|Cheer Bear|Grumpy Bear|Hugs|Tugs|Share Bear|Bedtime Bear|Beastlie|Screetchie|NoHeart|Sunshine Bear|Lots-a-Heart Elephant|Playful Heart Monkey|Cowardly Heart Bear|Weak Heart Bear|Gramms Bear|Champ Bear|Brave Heart Lion|Bright Heart Raccoon|Bathroom Bear|TreatHeart Pig|Swiftheart the Rabbit|Burning Bear|Swedish Heart Bear|Blackheart Bear|DemonHeart Bear|Toxic Waste Bear|Professor Cold Heart|The Doctor}} {
+   #switch {"%1"} {
+		#case {"Birthday Bear"}	   		{#var mobname bear};
+      #case {"Tenderheart"}		   	{#var mobname tenderheart};
+      #case {"Secret Bear"}			   {#var mobname bear};
+      #case {"Bleedingheart Bear"}		{#var mobname bear};
+      #case {"Smallheart Bear"}			{#var mobname bear};
+      #case {"Bitterheart Bear"}       {#var mobname bear};
+      #case {"Wish Bear"}              {#var mobname bear};
+      #case {"Luck Bear"}              {#var mobname bear};
+      #case {"Cheer Bear"}             {#var mobname bear};
+      #case {"Grumpy Bear"}            {#var mobname bear};
+      #case {"Champ Bear"}             {#var mobname bear};
+      #case {"Hugs"}                   {#var mobname hugs};
+      #case {"Tugs"}                   {#var mobname tugs};
+      #case {"Share Bear"}             {#var mobname bear};
+      #case {"Bedtime Bear"}           {#var mobname bear};
+      #case {"Beastlie"}               {#var mobname beastlie};
+      #case {"Screetchie"}             {#var mobname screetchie};
+      #case {"NoHeart"}                {#var mobname noheart};
+      #case {"Sunshine Bear"}          {#var mobname bear};
+      #case {"Lots-a-Heart Elephant"}  {#var mobname elephant};
+      #case {"Playful Heart Monkey"}   {#var mobname monkey};
+      #case {"Cowardly Heart Bear"}    {#var mobname bear};
+      #case {"Weak Heart Bear"}        {#var mobname bear};
+      #case {"Gramms Bear"}            {#var mobname bear};
+      #case {"Brave Heart Lion"}       {#var mobname lion};
+      #case {"Bright Heart Raccoon"}   {#var mobname raccoon};
+      #case {"Bathroom Bear"}          {#var mobname bear};
+      #case {"TreatHeart Pig"}			{#var mobname pig};
+      #case {"Swiftheart the Rabbit"}  {#var mobname rabbit};
+      #case {"Burning Bear"}           {#var mobname bear};
+      #case {"Swedish Heart Bear"}     {#var mobname bear};
+      #case {"Blackheart Bear"}        {#var mobname bear};
+      #case {"DemonHeart Bear"}        {#var mobname bear};
+      #case {"Toxic Waste Bear"}       {#var mobname bear};
+      #case {"Professor Cold Heart"}   {#var mobname professor};
+      #case {"The Doctor"}             {#var mobname doctor}
+	};
+	_check_mob
+}
+
+#action {^Grumpy shoves you back and shouts: There's nothing in there!} {#map undo}
+#action {^Smallheart steps in front of you and says: You're not going anywhere.} {#map undo}
+#action {^Luck Bear smiles and says: Sorry, you can't go in there.} {#map undo}
+
+
+#class {bot} {close}
+
