@@ -1,0 +1,11 @@
+#alias {secz40}
+{
+    #send !enter $sectionz[40];
+    pause game;
+    play;
+    unpause game;
+    botclear;
+    ba sectionz40_short;
+    cycle 1;
+    #delay {0.5} {#map go 25088}
+}       
