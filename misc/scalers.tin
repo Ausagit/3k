@@ -11,13 +11,13 @@
 	And at the bottom of the #act {^=M= {.. add/change the following: #if {$mobhard} {#if {$hardmode} {_check_mob}} {_check_mob}}
 	
 	Commands:
-	scaler add <area> <scaler> [hm:0/1] - add/update scaler for the area, hardmode is optional, o or 1
+	scaler add <area> <scaler> [hm:0/1] - add/update scaler for the area, hardmode is optional, 0 or 1
 	scaler remove <area>				- remove the area from the list
-	scaler enable						- enable automatic scaler changing (default)
-	scaler disable						- disable automatic scaler changing
-	scaler run							- change the scaler based on the configured setting and $bots[stepper]
-	scaler								- show a list of configured scalers
-	hmode <on/off>							- manually turn global hardmode on/off
+	scaler enable					- enable automatic scaler changing (default)
+	scaler disable					- disable automatic scaler changing
+	scaler run					- change the scaler based on the configured setting and $bots[stepper]
+	scaler						- show a list of configured scalers
+	hmode <on/off>					- manually turn global hardmode on/off
 */
 
 #class {scalers} {kill}
