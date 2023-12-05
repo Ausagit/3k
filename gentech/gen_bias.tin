@@ -15,6 +15,7 @@
 	bias						- dispaly the list of areas and defense biases
 	cdb <value> <opt command>	- switch defense bias and execute command when complete
 	cab <value> <opt command>	- switch offense bias and execute command when complete
+	rb <value>					- executes a .stop and onk1 to rebias to <value> when the current mob dies, then .resumes
 */
 
 #class {genbiases} {kill}
@@ -133,6 +134,18 @@
 		}
 	}; #else {
 		#echo {<fca>Syntax is cab <attack bias> <optional command to execute upon completion>.<088>}
+	}
+}
+
+/*
+	Shortcut for re-biasing between kills in steppers
+*/
+#alias {rb %1} {
+	#if {$gen_onkill_module} {
+		.stop;
+		onk1 cdb %1 .resume
+	} {
+		#echo {<fca>Onkill module is required.<088>}
 	}
 }
 
