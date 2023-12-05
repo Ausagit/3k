@@ -8,14 +8,14 @@
 
 	Commands:
 	bias add <area> <dbias>		- add the desired defense bias fror the area
-	bias remove <area>			- remove the area from the list
-	bias enable					- enable automatic bias changes (default)
-	bias disable				- disable automatic bias changes
-	bias run					- start the bias change for the currently loaded stepper file, $bots[stepper]
-	bias						- dispaly the list of areas and defense biases
+	bias remove <area>		- remove the area from the list
+	bias enable			- enable automatic bias changes (default)
+	bias disable			- disable automatic bias changes
+	bias run			- start the bias change for the currently loaded stepper file, $bots[stepper]
+	bias				- dispaly the list of areas and defense biases
 	cdb <value> <opt command>	- switch defense bias and execute command when complete
 	cab <value> <opt command>	- switch offense bias and execute command when complete
-	rb <value>					- executes a .stop and onk1 to rebias to <value> when the current mob dies, then .resumes
+	rb <value>			- executes a .stop and onk1 to rebias to <value> when the current mob dies, then .resumes
 */
 
 #class {genbiases} {kill}
