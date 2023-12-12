@@ -92,20 +92,6 @@
 	}
 }
 
-#nop 
-#alias {startrun}
-{
-    .stop;
-   	#delay {0.5} {fix all;home;bank;deposit all;withdraw 1000;home;guild;e;u;w;n;trashall;s;e;d;w;home;smithy;mapgo smithy;cdb 120 examine smith}
-}
-
-/*
-	Events from common.tin
-*/
-#alias {on_kshield_equip} {autocombat bash}
-#alias {on_kshield_remove} {autocombat clear}
-#alias {on_hockey_fan} {#send !recharge;#send !reclaim}
-
 /*
 	Miscellaneous
 */
