@@ -1,0 +1,32 @@
+Still a wip so not without bugs/required optimisations.
+Replace the original alias in mip.tin with the one below.
+
+#ALIAS {.mipProcessGlineGentech} {
+	#IF {%1 == 1} {
+		#REGEX {$mip[gline][1]} {CPC:<%d>%d<099>/%d G2N:%d(%d\%) RC[%d] Reset(<%d>%d\%<099>) TS:%d/%d E-TS:%d} {
+			#VAR {gentech[cpc][current]}	{&2};
+			#VAR {gentech[cpc][max]}	{&3};
+			#VAR {gentech[gxp][tnl]}	{&4};
+			#VAR {gentech[gxp][per]}	{&5};
+			#VAR {gentech[rc][num]}		{&6};
+			#VAR {gentech[reset]}		{&8};
+			#VAR {gentech[ts][current]}	{&9};
+			#VAR {gentech[ts][max]}		{&10};
+			#VAR {gentech[ets]}		{&11}
+		};
+		#REPLACE {mip[gline][1]} {Reset} {R}
+	}; #ELSEIF {%1 == 2} {
+		#REGEX {$mip[gline][2]} {Bias[<%d>%w<%d>] Atk(<%d>%d\%<%d>) Def(<%d>%d\%<%d>) <%d>Efield<%d>(<%d>%d%w<%d>) Edna(<%d>%d%w<%d>) Illum(<%d>%w<%d>)} {
+			#VAR {gentech[bias][mode]}	{&2};
+			#VAR {gentech[bias][atk]}	{&5};
+			#VAR {gentech[bias][def]}	{&8};
+			#VAR {gentech[efield][num]}	{&13};
+			#VAR {gentech[efield][unit]}{&14};
+			#VAR {gentech[edna][num]}	{&17};
+			#VAR {gentech[edna][unit]}	{&18};
+			#VAR {gentech[illum]}		{&21};
+		}
+	}; #ELSE {
+		#ECHO {<171> Invalid Gline Number <088>}
+	}
+}
