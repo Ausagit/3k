@@ -1,0 +1,36 @@
+#nop backpack.tin
+/*
+	Simple script for handling a variable number of autostacking backpacks from the gentech store.
+
+	Usage:
+	packcount <n>		- Set the number of backpacks you are using, default is 4
+	trashbpall			- Trash all itesm from your <n> backpacks in the equipment room.
+						  Make sure your packcount is set appropriately.
+	stacknext			- Add this to your corpsetrig to cycle through gathering with the backpacks each kill
+*/
+
+#class {backpack} {kill}
+#class {backpack} {open}
+
+#variable {backpack_module} {1}
+#variable {backpackcount} {4}
+#variable {backpackindex} {1}
+
+#nop set the number of backpacks that you are using
+#alias {packcount %1} {#variable backpackcount %1}
+
+#nop trash backpack contents at the equipment room
+#alias {trashbpall} {#loop 1 $backpackcount cnt {trash all from backpack $cnt}}
+#alias {sellbpall} {#loop 1 $backpackcount cnt {sell all from backpack $cnt}}
+#alias {donatebpall} {#loop 1 $backpackcount cnt {donate all from backpack $cnt}}
+
+#alias {stacknext}
+{
+	#if {$backpackcount} {
+		#send !stack $backpackindex;
+		#math {backpackindex} {$backpackindex + 1};
+		#if {$backpackindex > $backpackcount} {#variable backpackindex 1}
+	}
+}
+
+#class {backpack} {close}
