@@ -14,10 +14,12 @@
 	Make the modifications to mip.tin with the code contained in mip.tin (partial) to
 	make sure all the guild mip data is captured, else things may not work correctly.
 */
-#nop check before loading these modules as other guilds can use them
+#nop check before loading these modules as all guilds can use them
 #if {$mask_module != 1} {#class {mask} {read} {.tt/3k/modules/mask.tin}}
 #if {$backpack_module != 1} {#class {backpack} {read} {.tt/3k/modules/backpack.tin}}
 #if {$onkill_module != 1} {#class {onkill} {read} {.tt/3k/modules/onkill.tin}}
+
+#read {.tt/3k/guilds/guilds_common.tin}
 
 #class {gentech} {kill}
 #class {gentech} {open}
@@ -697,3 +699,4 @@
 }
                                                         
 #class {gentech} {close}
+
