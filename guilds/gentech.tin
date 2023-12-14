@@ -2,30 +2,39 @@
 /*
 	Modified from Inix's original file to streamline the mip data, and extend functionality via
 	the core aliases included below:
-	tac    - repair/stabilize/tactical yourself and others
-	bias   - maintain a list of area::biases to automatically rebias on entry
-	leech  - leech off of other gentech, or allow them to leech off of you
+	tac               - repair/stabilize/tactical yourself and others
+	bias              - maintain a list of area::biases to automatically rebias on entry
+	leech             - leech off of other gentech, or allow them to leech off of you
+	cpc [auto/#]      - configure cpc donations using the remote cpc transfer experiment
+	rb <bias>         - quick alias to pause stepper, rebias defense on kill, then resume
+	cab	<bias> [cmd]  - conform attack bias, regardless of whether it's higher or lower, execute cmd on complete
+	cdb <bias> [cmd]  - conform defense bias, regardless of whether it's higher or lower, execute cmd on complete
+	cte			      - turn corpse trigger on
+	ctd			      - turn corpse trigger off (divvy on kill)
+	ctp			      - turn corpse trigger on for parties, will grab stuff but divvy gold
+	mask [on/off/all] - if using the mask module, this will configure the mask, read the mask header for more info
+	onk [clear/cmd]   - execute the command on every kill, or clear it
+	onk1 [clear/cmd]  - execute the command once then clear it
 
 	Additional modules used in this file:
-	mask.tin   - use for reclaiming PU from corpses wiether you have a mask or not
-	scaler.tin - maintain a list of area::scalers to automatically change on entry
-	onkill.tin - execute a command or script when an enemy dies
+	mask.tin     - use for reclaiming PU from corpses wiether you have a mask or not
+	scaler.tin   - maintain a list of area::scalers to automatically change on entry
+	onkill.tin   - execute a command or script when an enemy dies
+	backpack.tin - simple script to cycle through gentech backpack gathering
 
 	Make the modifications to mip.tin with the code contained in mip.tin (partial) to
 	make sure all the guild mip data is captured, else things may not work correctly.
 */
 #nop check before loading these modules as all guilds can use them
-#if {$mask_module != 1} {#class {mask} {read} {.tt/3k/modules/mask.tin}}
-#if {$backpack_module != 1} {#class {backpack} {read} {.tt/3k/modules/backpack.tin}}
-#if {$onkill_module != 1} {#class {onkill} {read} {.tt/3k/modules/onkill.tin}}
-
 #read {.tt/3k/guilds/guilds_common.tin}
+#if {$mask_module != 1} {#read {.tt/3k/modules/mask.tin}}
+#if {$backpack_module != 1} {#read {.tt/3k/modules/backpack.tin}}
+#if {$onkill_module != 1} {#read {.tt/3k/modules/onkill.tin}}
 
 #class {gentech} {kill}
 #class {gentech} {open}
 
 #variable {guild} {gentech}
-
 #variable {last_echelon} {0}
 #variable {cpc_low} {0}
 #variable {cpc_auto} {1}
@@ -35,6 +44,15 @@
 #variable {gentech[rc][last]} {0}
 #variable {gentech[gxp][round]} {0}
 #variable {gentech[rc][round]} {0}
+#variable {gen_bias_module} {1}
+#variable {biases_enabled} {1}
+#variable {onbiaslock} {}
+#variable {gen_leech_module} {1}
+#variable {leech_on} {0}
+#variable {leech_from} {}
+#variable {gen_tactical_module} {1}
+#variable {tactical_on} {1}
+#list {tactical_list} {create} {}
 
 #gag {^[[ The Central Power Core is reaching its maximum capacity}
 #gag {^[[ Central Power Core at Maximal Levels}
@@ -92,17 +110,18 @@
 	}
 }
 
-/*
-	Miscellaneous
-*/
-#action {^Echelon: %1 of [} {#variable {last_echelon} {%1}}
-#action {^ [[ Timeslide Complete} {(heal $ses_name;meditate}
-
-#action {^[[ You have advanced to echelon [%1] in your order in the Gen-High Council. ]]}
+#alias {startrun}
 {
-	update_chat Echelon $last_echelon -> %1!;
-	#variable {last_echelon} {%1}
+    .stop;
+   	#delay {0.5} {fix all;home;bank;deposit all;withdraw 1000;home;guild;e;u;w;n;trashall;s;e;d;w;home;smithy;mapgo smithy;cdb 120 examine smith}
 }
+
+/*
+	Events from common.tin
+*/
+#alias {on_kshield_equip} {autocombat bash}
+#alias {on_kshield_remove} {autocombat clear}
+#alias {on_hockey_fan} {#send !recharge;#send !reclaim}
 
 #alias {cpc}
 {
@@ -148,6 +167,17 @@
 }
 
 /*
+	Miscellaneous
+*/
+#action {^Echelon: %1 of [} {#variable {last_echelon} {%1}}
+#action {^ [[ Timeslide Complete} {(heal $ses_name;meditate}
+#action {^[[ You have advanced to echelon [%1] in your order in the Gen-High Council. ]]}
+{
+	update_chat Echelon $last_echelon -> %1!;
+	#variable {last_echelon} {%1}
+}
+
+/*
 	Powerfeed & corpse leeching
 */
 #action {^%1 pokes you in the ribs}
@@ -158,7 +188,6 @@
 		#send !powerfeed @tolower{%1} $maxtransfer
 	}
 }
-
 #action {^That player is not a member of the Gentech Guild}
 {
 	#nop non-gentech has poked you, feed them a corpse;
@@ -170,48 +199,6 @@
 		#send !uncooler corpse
 	}
 }
-
-/*
-	Update status on screen, triggered from mip updates.
-	It can be called several times per round.
-*/
-#alias {update_status}
-{	
-	#nop create a few GP percentages;
-	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
-	#math {my[gp2][perc]} {$my[gp2][current] * 100 / $my[gp2][max]};
-
-	#NOP Build HP Bars;
-	#format {hp}			{%+4s} {@colscale{$my[hp][current];$my[hp][max]}};
-	#format {hp_max}		{%+4s} {<128>$my[hp][max]<088>};
-	#format {sp}			{%+4s} {@colscale{$my[sp][current];$my[sp][max]}};
-	#format {sp_max}		{%+4s} {<128>$my[sp][max]<088>};
-	#format {pu}			{%+4s} {@colscale{$my[gp1][current];$my[gp1][max]}};
-	#format {pu_max}		{%+4s} {<128>$my[gp1][max]<088>};
-	#format {spu}			{%+4s} {<128>$my[gp2][current]<088>};
-	#format {gxpdetails}	{%+4s} {$gentech[gxprc]};
-	#format {ehealth}		{%+3s} {@colscale{$enemy[hp];100}};
-	#format {corpses[inventory]} {%+2s} {$corpses[inventory]};
-    #format {corpses[truck]} {%+2s} {$corpses[truck]};
-    #format {corpses[coffin]} {%+2s} {$corpses[coffin]};
-    #format {corpses[freezer]} {%+2s} {$corpses[freezer]};
-	#format {roundcount} {%+3s} {$mip[round]};
-
-	#if {"$gentech[illum]" == "ON"} {#variable illumcol <138>} {#variable illumcol <108>};
-	#if {"$gentech[bias][mode]" == "Locked"} {#variable biasmode +} {#variable biasmode -};
-	#if {"$onkill" != ""} {#variable {onkill_status} {OK:<088><fca>${onkill}<088>}} {#variable {onkill_status} {}};
-
-	#format {mipp1} {<130>CPC:<088><230>%+5s<088> <168>G2N:<088><268>%g<088> <168>RC:<088><268>%g<088> <128>TS:<088><228>%s/%s(%s)<088>} {$gentech[cpc][current]} {$gentech[gxp][tnl]} {$gentech[rc][num]} {$gentech[ts][current]} {$gentech[ets]} {$gentech[reset]};
-	#format {mipp2} {<158>CB:<088><258>%s/%s%s<088> <148>EF:<088><248>%s%.1s<088> <178>ED:<088>%s%.1s} {$gentech[bias][atk]} {$gentech[bias][def]} {$biasmode} {$gentech[efield][num]} {$gentech[efield][unit]} {$gentech[edna][num]} {$gentech[edna][unit]};
-	#format {gstatus} {<088>%sI%sC%sM%sL%sT%sS%sB%s%s%sH<088>} {$illumcol} {@statuscolour{$corpsetrig_on}} {@statuscolour{$mask_on}} {@statuscolour{$leech_on}} {@statuscolour{$tactical_on}} {@statuscolour{$scalers_enabled}} {@statuscolour{$biases_enabled}} {@statuscolour{$combat_que_on}} {$area_rating} {@statuscolour{$global_hardmode}};
-
-	#line ignore #showme {$mipp1 $mipp2} {-6};
-	#line ignore #showme {HP:${hp}/${hp_max} SP:${sp}/${sp_max} PU:${pu}/${pu_max}(${spu}) <168>G:<088><268>${gxpdetails}<088> <088>E:<088>${ehealth}<088> R:$roundcount} {-4};
-	#line ignore #showme {ST:${gstatus} CO:${corpses[inventory]} ${corpses[coffin]} ${corpses[freezer]}  BS:$path_pos/$path_len $onkill_status<088>} {-3};
-}
-
-
-
 
 /*
 	Update variables and perform actions that only need to be checked once per round as
@@ -272,8 +259,6 @@
 
 } {2}
 
-
-
 /*
 	Allows you to automatically change bias when entering an area, based on a preconfigured list of area::dbias entries.
 	The data is automatically saved to the file .tt/3k/char/<charname>-bias.tin file.
@@ -307,10 +292,6 @@
 	#class {mybiases} {write} {.tt/char/$ses_name-bias.tin};
 	#unvariable {mybiasessize}
 }
-
-#variable {gen_bias_module} {1}
-#variable {biases_enabled} {1}
-#variable {onbiaslock} {}
 
 /*
 	Change defense bias, called by genbias, or can be used manually
@@ -412,7 +393,7 @@
 	Shortcut for re-biasing between kills in steppers
 */
 #alias {rb %1} {
-	#if {$gen_onkill_module} {
+	#if {$onkill_module} {
 		.stop;
 		onk1 cdb %1 .resume
 	} {
@@ -432,6 +413,9 @@
 	}
 }
 
+/*
+	Manage bias changes between steppers
+*/
 #alias {bias}
 {
 	#switch {"%1"} {
@@ -508,10 +492,6 @@
     leech <name>        - Starts a ticker to poke <name> every 10 seconds if your PU is below 33%
     leech off           - Turns off the leeching and ticker
 */
-#variable {gen_leech_module} {1}
-#variable {leech_on} {0}
-#variable {leech_from} {}
-
 #alias {leech}
 {
     #if {"%1" == "off"} {
@@ -567,8 +547,6 @@
     }
 }
 
-
-
 /*
     Alias to configure a list of gentech to repair/stabilize and tactical enhance.
 
@@ -581,10 +559,6 @@
     tac run             - if tac is enabled, enhance yourself and the list
     tac                 - display the list of Gentech to enhance
 */
-#variable {gen_tactical_module} {1}
-#variable {tactical_on} {1}
-#list {tactical_list} {create} {}
-
 #alias {tac}
 {
     #switch {"%1"} {
@@ -683,6 +657,44 @@
 #function {taclistindex} {
 	#list tactical_list find {%1} result
 }
+
+/*
+	Update status on screen, triggered from mip updates.
+	It can be called several times per round.
+*/
+#alias {update_status}
+{	
+	#nop create a few GP percentages;
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
+	#math {my[gp2][perc]} {$my[gp2][current] * 100 / $my[gp2][max]};
+
+	#NOP Build HP Bars;
+	#format {hp}			{%+4s} {@colscale{$my[hp][current];$my[hp][max]}};
+	#format {hp_max}		{%+4s} {<128>$my[hp][max]<088>};
+	#format {sp}			{%+4s} {@colscale{$my[sp][current];$my[sp][max]}};
+	#format {sp_max}		{%+4s} {<128>$my[sp][max]<088>};
+	#format {pu}			{%+4s} {@colscale{$my[gp1][current];$my[gp1][max]}};
+	#format {pu_max}		{%+4s} {<128>$my[gp1][max]<088>};
+	#format {spu}			{%+4s} {<128>$my[gp2][current]<088>};
+	#format {gxpdetails}	{%+4s} {$gentech[gxprc]};
+	#format {ehealth}		{%+3s} {@colscale{$enemy[hp];100}};
+	#format {corpses[inventory]} {%+2s} {$corpses[inventory]};
+    #format {corpses[truck]} {%+2s} {$corpses[truck]};
+    #format {corpses[coffin]} {%+2s} {$corpses[coffin]};
+    #format {corpses[freezer]} {%+2s} {$corpses[freezer]};
+	#format {roundcount} {%+3s} {$mip[round]};
+
+	#if {"$gentech[illum]" == "ON"} {#variable illumcol <138>} {#variable illumcol <108>};
+	#if {"$gentech[bias][mode]" == "Locked"} {#variable biasmode +} {#variable biasmode -};
+	#if {"$onkill" != ""} {#variable {onkill_status} {OK:<088><fca>${onkill}<088>}} {#variable {onkill_status} {}};
+
+	#format {mipp1} {<130>CPC:<088><230>%+5s<088> <168>G2N:<088><268>%g<088> <168>RC:<088><268>%g<088> <128>TS:<088><228>%s/%s(%s)<088>} {$gentech[cpc][current]} {$gentech[gxp][tnl]} {$gentech[rc][num]} {$gentech[ts][current]} {$gentech[ets]} {$gentech[reset]};
+	#format {mipp2} {<158>CB:<088><258>%s/%s%s<088> <148>EF:<088><248>%s%.1s<088> <178>ED:<088>%s%.1s} {$gentech[bias][atk]} {$gentech[bias][def]} {$biasmode} {$gentech[efield][num]} {$gentech[efield][unit]} {$gentech[edna][num]} {$gentech[edna][unit]};
+	#format {gstatus} {<088>%sI%sC%sM%sL%sT%sS%sB%s%s%sH<088>} {$illumcol} {@statuscolour{$corpsetrig_on}} {@statuscolour{$mask_on}} {@statuscolour{$leech_on}} {@statuscolour{$tactical_on}} {@statuscolour{$scalers_enabled}} {@statuscolour{$biases_enabled}} {@statuscolour{$combat_que_on}} {$area_rating} {@statuscolour{$global_hardmode}};
+
+	#line ignore #showme {$mipp1 $mipp2} {-6};
+	#line ignore #showme {HP:${hp}/${hp_max} SP:${sp}/${sp_max} PU:${pu}/${pu_max}(${spu}) <168>G:<088><268>${gxpdetails}<088> <088>E:<088>${ehealth}<088> R:$roundcount} {-4};
+	#line ignore #showme {ST:${gstatus} CO:${corpses[inventory]} ${corpses[coffin]} ${corpses[freezer]}  BS:$path_pos/$path_len $onkill_status<088>} {-3};
+}
                                                         
 #class {gentech} {close}
-
