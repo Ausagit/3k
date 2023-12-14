@@ -7,11 +7,11 @@
 	leech             - leech off of other gentech, or allow them to leech off of you
 	cpc [auto/#]      - configure cpc donations using the remote cpc transfer experiment
 	rb <bias>         - quick alias to pause stepper, rebias defense on kill, then resume
-	cab	<bias> [cmd]  - conform attack bias, regardless of whether it's higher or lower, execute cmd on complete
+	cab <bias> [cmd]  - conform attack bias, regardless of whether it's higher or lower, execute cmd on complete
 	cdb <bias> [cmd]  - conform defense bias, regardless of whether it's higher or lower, execute cmd on complete
-	cte			      - turn corpse trigger on
-	ctd			      - turn corpse trigger off (divvy on kill)
-	ctp			      - turn corpse trigger on for parties, will grab stuff but divvy gold
+	cte               - turn corpse trigger on
+	ctd               - turn corpse trigger off (divvy on kill)
+	ctp               - turn corpse trigger on for parties, will grab stuff but divvy gold
 	mask [on/off/all] - if using the mask module, this will configure the mask, read the mask header for more info
 	onk [clear/cmd]   - execute the command on every kill, or clear it
 	onk1 [clear/cmd]  - execute the command once then clear it
@@ -63,28 +63,8 @@
 #gag {^[>      Reclamation Complete}
 #gag {^Your genetic arm strike}
 
-#nop aliases - added here to keep them seperate for gswaps
-#alias {kt1} {ktrig wrap/slab/reclaim}
-#alias {kt2} {ktrig wrap/reclaim}
-#alias {kt3} {ktrig recharge/reclaim}
-#alias {tsl} {timeslide}
-#alias {tslq} {timeslide query}
-#alias {tscq} {timescan query}
-#alias {tscs} {timescan set}
-#alias {ak} {autokill}
-#alias {ag} {autoguild %1}
-#alias {bl} {biaslock}
 #alias {sellall} {sell all;sellbpall}
 #alias {trashall} {trashbpall}
-
-#alias {suitup}
-{
-	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw 100000;home;
-	guild;e;u;w;w;buy 3;buy 3;buy 4;buy 4;buy 4;buy 4;keep all;wear all;genarm sword;e;e;u;e;e;commence;
-	#delay {25} {=call;=afollow on;=aswap on;=akill on;w;w;d;d;w;home;chaos;enter;s;s;w;w;enter;n;n;n;n;
-	#4 buy moon rocks;#2 put moon rocks in backpack 5;#2 put moon rocks in backpack 6;s;s;s;s;leave;e;e;n;n;vortex;home;
-	mapgo home}
-}
 
 /*
 	Add guildsetup as the first command in a stepper botpath to set states for the dungeon/area.
@@ -109,19 +89,6 @@
 		#delay {2} {..}
 	}
 }
-
-#alias {startrun}
-{
-    .stop;
-   	#delay {0.5} {fix all;home;bank;deposit all;withdraw 1000;home;guild;e;u;w;n;trashall;s;e;d;w;home;smithy;mapgo smithy;cdb 120 examine smith}
-}
-
-/*
-	Events from common.tin
-*/
-#alias {on_kshield_equip} {autocombat bash}
-#alias {on_kshield_remove} {autocombat clear}
-#alias {on_hockey_fan} {#send !recharge;#send !reclaim}
 
 #alias {cpc}
 {
