@@ -1,0 +1,46 @@
+#variable {corpsetrig_on} {1}
+
+/*
+	Helper functions
+*/
+#function {tolower}
+{
+	#format {result} {%l} {%1}
+}
+#function {statuscolour}
+{
+	#switch {%1} {
+		#case 0 {
+			#variable {result} {<108>}
+		};
+		#case 1 {
+			#variable {result} {<028>}
+		};
+		#default {
+			#variable {result} {<faf>}
+		}
+	}
+}
+#function {onoffcolour}
+{
+	#if {"%1" == "ON"} {
+		#variable {result} {<afa>%1<088>}
+	} {
+		#variable {result} {<faa>%1<088>}
+	}
+}
+
+#function {storedcorpses}
+{
+	#math {result} {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler]}
+}
+
+
+/*
+	Corpse trigger & functions
+*/
+#nop the corpse trig action is defined here and will work before a stepper is run, once run it will override this action
+#action {^=K=%1 dealt the killing blow to} {corpsetrig}
+#alias {cte} {#variable {corpsetrig_on} {1};#echo {<bfb>Corpse trigger enabled.<088>}}
+#alias {ctp} {#variable {corpsetrig_on} {2};#echo {<bfb>Corpse trigger enabled (party).<088>}}
+#alias {ctd} {#variable {corpsetrig_on} {0};#echo {<bfb>Corpse trigger disabled.<088>}}
