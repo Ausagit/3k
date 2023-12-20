@@ -52,6 +52,7 @@
 #variable {leech_from} {}
 #variable {gen_tactical_module} {1}
 #variable {tactical_on} {1}
+#variable {area_rating} {0}
 #list {tactical_list} {create} {}
 
 #gag {^[[ The Central Power Core is reaching its maximum capacity}
