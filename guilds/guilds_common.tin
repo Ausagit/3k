@@ -44,3 +44,11 @@
 #alias {cte} {#variable {corpsetrig_on} {1};#echo {<bfb>Corpse trigger enabled.<088>}}
 #alias {ctp} {#variable {corpsetrig_on} {2};#echo {<bfb>Corpse trigger enabled (party).<088>}}
 #alias {ctd} {#variable {corpsetrig_on} {0};#echo {<bfb>Corpse trigger disabled.<088>}}
+
+#nop mythic knight's shield
+#action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip}
+#action {^You carefully remove the shield} {on_kshield_remove}
+#action {^There is no reason to 'bash' here} {on_kshield_remove}
+#action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan}
+
+
