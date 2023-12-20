@@ -672,5 +672,12 @@
 	=aswap on;
 	=akill on
 }
+
+/*
+	Events from guilds_common.tin
+*/
+#alias {on_kshield_equip} {autocombat bash}
+#alias {on_kshield_remove} {autocombat clear}
+#alias {on_hockey_fan} {#send !recharge;#send !reclaim}
                                                         
 #class {gentech} {close}
