@@ -663,5 +663,13 @@
 	#line ignore #showme {HP:${hp}/${hp_max} SP:${sp}/${sp_max} PU:${pu}/${pu_max}(${spu}) <168>G:<088><268>${gxpdetails}<088> <088>E:<088>${ehealth}<088> R:$roundcount} {-4};
 	#line ignore #showme {ST:${gstatus} CO:${corpses[inventory]} ${corpses[coffin]} ${corpses[freezer]}  BS:$path_pos/$path_len $onkill_status<088>} {-3};
 }
+
+#action {^pattern buffer for storage. Your cloning was a success!}
+{
+	=call;
+	=afollow on;
+	=aswap on;
+	=akill on
+}
                                                         
 #class {gentech} {close}
