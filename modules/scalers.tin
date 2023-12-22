@@ -75,7 +75,7 @@
 		};
 		#case "remove" {
 			#if {"%2" != ""} {
-				#unvariable {botscalers[$guild][%2][scaler]};
+				#unvariable {botscalers[$guild][%2]};
 				#class {scalerlist} {write} {.tt/char/$ses_name-scale.tin};
 				#echo {<fca>Dungeon %2 scaler removed.<088>}
 			} {
