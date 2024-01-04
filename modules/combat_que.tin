@@ -1,0 +1,350 @@
+#nop combat_que.tin
+/*
+    Usage:
+        Add 'cq reset' to corpsetrig
+        Add some cue items, 'cq add <name> <rating> <when> <repeat> <cmd(s)>'
+        Start the que, 'cq on'
+    
+    Data format:
+        $combat_que[ability]         - short description of the ability
+        $combat_que[ability][cmd]    - the command to send to the mud
+        $combat_que[ability][rating] - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
+        $combat_que[ability][ready]  - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
+        $combat_que[ability][repeat] - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
+        $combat_que[ability][when]   - start/high/med/low, first few rounds or at any round, high health, med health or low health
+        $combat_que[ability][locked] - flag to lock the ability after the first use if it's non-repeatable, reset on kill
+
+    <when> options:
+        start: rounds < 5, health >= 90%
+        low:   health >= 10%
+        med:   health >= 50%
+        high:  health >= 80%
+        end:   health < 5%
+        
+    Todo:
+        Investigate ways of resetting rating when leaving a dungeon and manually running around
+*/
+#class {ratinglist} {kill}
+#class {combat_que} {kill}
+#class {combat_que} {open}
+
+#variable {combat_que} {}
+#variable {combat_que_on} {0}
+#variable {cq_debug} {0}
+#variable {combat_que_module} {1}
+#variable {area_rating} {0}
+
+#ticker {combat_que} {cq run} {1}
+
+#alias {cqload} {#read .tt/3k/modules/combat_que.tin}
+
+#alias {cq}
+{
+    #switch {"%1"} {
+        #case "" {
+            #local {cuelist} {};
+            #format {cuelist} {<fca> COMBAT QUE                                            <088><eba>EN:$combat_que_on AR:$area_rating<088>} {$cuelist};
+            #format {cuelist} {%s\n<eba>=================================================================<088>} {$cuelist};
+            #format {cuelist} {%s\n<fca> %-10s %-30s %-5s %s %s %s %s<088>} {$cuelist} {Name} {Command} {When} {Rtg} {Rep} {Rdy} {Lck};
+            #format {cuelist} {%s\n<eba>-----------------------------------------------------------------<088>} {$cuelist};
+            #if {&{combat_que[]} == 0} {
+                #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
+            } {
+                #foreach {*combat_que[]} {ability} {
+                    #local {cuelinecolour} {<088>};
+                    #if {$area_rating < $combat_que[$ability][rating]} {
+                        #variable {cuelinecolour} {<108>}
+                    };#elseif {$combat_que[$ability][ready] == 1 && $combat_que[$ability][locked] == 1} {
+                        #variable {cuelinecolour} {<028>}
+                    };#elseif {$combat_que[$ability][ready] == 1 && $combat_que[$ability][locked] == 0} {
+                        #variable {cuelinecolour} {<128>}
+                    };
+                    #format {cuelist} {%s\n%s %-10s %-30s %-5s  %d   %d   %d   %d} {$cuelist} {$cuelinecolour} {$ability} {$combat_que[$ability][cmd]} {$combat_que[$ability][when]} {$combat_que[$ability][rating]} {$combat_que[$ability][repeat]} {$combat_que[$ability][ready]} {$combat_que[$ability][locked]};
+                }
+            };
+            #echo {$cuelist<088>}
+        };
+        #case "add" {
+            #regexp {%0} {add %w {-?[0-9]{1}} %w {[0-1]{1}} {.*}} {
+                #nop cq add <name> <rating> <when> <repeat> <cmd>;
+                #nop cq add   %1     %2       %3      %4     %5;
+                #local {cdname} {};
+                #format {cdname} {%l} {&1};
+                #variable {combat_que[$cdname][rating]}  {&2};
+                #format {combat_que[$cdname][when]} {%l} {&3};
+                #variable {combat_que[$cdname][repeat]}  {&4};
+                #variable {combat_que[$cdname][cmd]}     {&5};
+                #variable {combat_que[$cdname][locked]}  {0};
+                #variable {combat_que[$cdname][ready]}   {1};
+                #echo {<eba>Combat que '$cdname' added.<088>}
+            } {
+                #echo {<eba>Syntax is:\ncq add <name> <rating:0-9> <start/high/med/low/end> <repeat:0/1> <command><088>}
+            }
+        };
+        #case "remove" {
+            #local {cdname} {};
+            #format {cdname} {%l} {%2};
+            #unvariable {combat_que[$cdname]};
+            #echo {<eba>Combat que '$cdname' removed.<088>}
+        };
+        #case "clear" {
+            #variable {combat_que} {};
+            #echo {<eba>Combat que cleared.<088>}
+        };
+        #case "on" {
+            #variable {combat_que_on} {1};
+            #echo {<eba>Combat que enabled.<088>};
+        };
+        #case "off" {
+            #variable {combat_que_on} {0};
+            #echo {<eba>Combat que disabled.<088>};
+        };
+        #case "refresh" {
+            #foreach {*combat_que[]} {ability} {
+                #variable {combat_que[$ability][locked]} {0}
+            };
+            #if {$cq_debug} {#echo {CQ: refreshed}}
+        };
+        #case "debug" {
+            #if {$cq_debug} {
+                #variable {cq_debug} {0};
+                #echo {<eba>Combat que debug disabled.<088>}
+            } {
+                #variable {cq_debug} {1};
+                #echo {<eba>Combat que debug enabled.<088>}
+            }
+        };
+        #case "run" {
+            #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
+            {
+                #foreach {*combat_que[]} {ability} {       
+                    #if {$combat_que[$ability][ready] == 1} {
+                        #if {$cq_debug} {#echo {CQ: $ability ready}};
+        
+                        #if {$combat_que[$ability][locked] == 1} {
+                            #if {$cq_debug} {#echo {CQ: $ability not executed: locked}};
+                            #continue
+                        };
+
+                        #if {$combat_que[$ability][rating] >= 0} {
+                            #nop positive rating, so check que rating > area rating;
+                            #if {$combat_que[$ability][rating] > $area_rating} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: que rating $combat_que[$ability][rating] > area rating $area_rating }};
+                                #continue
+                            }
+                        } {
+                            #nop negative que rating, so check that -1 * (que rating) < $area rating;
+                            #if {$combat_que[$ability][rating] + $area_rating > 0} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: que rating $combat_que[$ability][rating] > area rating $area_rating }};
+                                #continue
+                            }
+                        };
+        
+                        #if {"$combat_que[$ability][when]" == "start"} {
+                            #if {$mip[round] > 4 || $enemy[hp] < 50} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: when=start}};
+                                #continue
+                            }
+                        };
+                        #elseif {"$combat_que[$ability][when]" == "low"} {
+                            #if {$enemy[hp] < 10} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: when=low}};
+                                #continue
+                            }
+                        };
+                        #elseif {"$combat_que[$ability][when]" == "med"} {
+                            #if {$enemy[hp] < 50} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: when=med}};
+                                #continue
+                            }
+                        };
+                        #elseif {"$combat_que[$ability][when]" == "high"} {
+                            #if {$enemy[hp] < 80} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: when=high}};
+                                #continue
+                            }
+                        };
+                        #elseif {"$combat_que[$ability][when]" == "end"} {
+                            #if {$enemy[hp] >= 5} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: when=end}};
+                                #continue
+                            }
+                        };
+                        #else {
+                            #if {$cq_debug} {#echo {CQ: $ability not executed: when=unknown/invalid}};
+                            #continue
+                        };
+        
+                        #if {$combat_que[$ability][repeat] == 1 && $combat_que[$ability][locked] == 1} {
+                            #if {$cq_debug} {#echo {CQ: $ability not executed: repeat: locked}};
+                            #continue
+                        };
+        
+                        #if {$combat_que[$ability][repeat] == 0} {
+                            #variable {combat_que[$ability][locked]} {1}
+                        };
+        
+                        #if {$cq_debug} {#echo {CQ: Executing $ability, cmd: $combat_que[$ability][cmd]}};
+                        $combat_que[$ability][cmd]
+                    }
+                }
+            }
+        };
+        #default {
+            #echo {<eba>Unknown command, use cq [add/remove/run/clear/debug/refresh]<088>}
+        }
+    }
+}
+
+#alias {update_cooldown %1 %d}
+{
+    #local {cdname} {};
+    #local {cdstatus} {%2};
+    #format {cdname} {%l} {%1};
+    #if {"$combat_que[$cdname]" != ""} {
+        #if {$cdstatus == 0} {
+            #nop abilitiy has been used;
+            #variable {combat_que[$cdname][ready]} {0};
+            #if {$cq_debug} {#echo {CQ: $cdname coodown: $combat_que[$cdname][ready]}};
+        } {
+            #nop ability has come off cooldown, attempt to use it again if repeatable;
+            #variable {combat_que[$cdname][ready]} {1};
+            #if {$combat_que[$cdname][repeatable]} {
+                $combat_que[$cdname][cmd];
+                #if {$cq_debug} {#echo {CQ: $cdname coodown: $combat_que[$cdname][ready], repeatable, executing}};
+            } {
+                #if {$cq_debug} {#echo {CQ: $cdname coodown: $combat_que[$cdname][ready], non-repeatable}};
+            }
+        };
+    }
+}
+
+/*
+	Script to automatically change rating when entering dungeons using your preconfigured list of dungeon::ratings.
+	The data is automatically saved to the file .tt/3k/char/<charname>-ratings.tin file.
+	
+	Suggested:
+	Add guildsetup as the first command in the area's botpath variable add a guildsetup alias to your <guild>.tin file.
+	Add 'rate run' to the alias.
+
+	Commands:
+	rate add <area> <rating>	- add/update scaler for the area
+	rate remove <area>	        - remove the area from the list
+	rate run					- change the scaler based on the configured setting and $bots[stepper]
+	rate						- show a list of configured scalers
+    rate <number>               - set a manual rating
+*/
+
+#class {ratinglist} {read} {.tt/char/$ses_name-ratings.tin}
+#class {ratinglist} {size} {scalerssize};
+
+#if {$scalerssize == 0} {
+	#echo {Rating file not found, creating default.};
+	#class {ratinglist} {kill};
+	#class {ratinglist} {open};
+	#variable {ratings} {};
+	#class {ratinglist} {close};
+	#class {ratinglist} {save};
+	#class {ratinglist} {write} {.tt/char/$ses_name-ratings.tin};
+}
+
+#unvariable {scalerssize}
+#variable {ratings_module} {1}
+
+#alias {rate}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#if {"%2" != "" && "%3" != "" && %3 >= 0 && %3 <= 9}
+			{
+				#variable {ratings[$guild][%2]} {%3};
+				#class {ratinglist} {write} {.tt/char/$ses_name-ratings.tin};
+				#echo {<eba>Area %2 rating set to %3.<088>}
+			} {
+				#echo {<eba>Syntax is 'rate add <stepper_name> <0-5>'.<088>}
+			}
+		};
+		#case "remove" {
+			#if {"%2" != ""} {
+				#unvariable {ratings[$guild][%2]};
+				#class {ratinglist} {write} {.tt/char/$ses_name-ratings.tin};
+				#echo {<eba>Area %2 rating removed.<088>}
+			} {
+				#echo {<eba>Syntax is 'rate remove <stepper_name>'.<088>}
+			}
+		};
+		#case "run" {
+			#if {$ratings[$guild][$bots[stepper]]} {
+				#variable {area_rating} {$ratings[$guild][$bots[stepper]]}
+			} {
+                #variable {area_rating} {0}
+            };
+            #echo {<eba>Area rating set to $area_rating<088>}
+		};
+		#case "" {
+            #local {header} {};
+			#nop #format {header} {%n} {$guild};
+            #local {cuelist} {};
+            #format {cuelist} {<fca> AREA RATINGS %-45s AR:%s<088>} {$header} {$area_rating};
+            #format {cuelist} {%s\n<eba>=================================================================<088>} {$cuelist};
+            #format {cuelist} {%s\n<eba> Rtg Area Name<088>} {$cuelist};
+            #format {cuelist} {%s\n<eba>-----------------------------------------------------------------<088>} {$cuelist};
+    		#if {&{ratings[]} == 0} {
+				#format {cuelist} {%s\n| No ratings set} {$cuelist}
+			} {
+				#foreach {*ratings[$guild][%*]} {name} {
+					#format {cuelist} {%s\n  %d  %s} {$cuelist} {$ratings[$guild][$name]} {$name}
+				}				
+			};
+            #echo {$cuelist};
+		};
+		#default {
+			#math {area_rating} {%1};
+            #if {$area_rating >= 0 && $area_rating <= 9} {
+                #echo {<afc>Manual rating set to $area_rating.<088>}
+            } {
+                #echo {<afc>Invalid area rating, range is 0-9.<088>}
+            }
+		}
+	}
+}
+
+/*
+    Cooldown Tracking
+*/
+#action {^A shimmering ball of energy appears magically when %w snap}
+{
+    #nop Removed the action for this ability from chat_monitors.tin;
+    update_chat <158>Energy Well Actived<088> by <138>%1<088>!;
+    #if {"%1" == "you"} {
+        update_cooldown ewell 0;
+        #delay {energywell} {update_cooldown ewell 1} {1680}
+    }
+}
+
+#action {^You touch the %1 rune on the artifact and hear a soft *click*}
+{
+    #format {touching_rune} {%l} {%1}
+}
+
+#action {^Nothing happens after touching that activated rune}
+{
+    update_cooldown $touching_rune 0
+}
+
+#action {^Upon the %1, the %2 rune glows brightly again.}
+{
+    update_cooldown %2 1
+}
+
+#action {^   whispering a dark prayer to the provenance of an ancient god...}
+{
+    update_cooldown raven 0
+}
+
+#action {^A charge of emerald energy from the relic fractally crawls across your head}
+{
+    update_cooldown owl 0
+}
+
+#class {combat_que} {close}
