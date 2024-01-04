@@ -23,6 +23,17 @@
         
     Todo:
         Investigate ways of resetting rating when leaving a dungeon and manually running around
+	Mob-based usage
+
+    Example for Gentech:
+	#alias {cq_setup}
+	{
+		cq clear;
+		cq add ewell 7 start 0 (energy well;
+		cq add owl 9 end 0 touch owl rune;
+		cq add raven 9 start 0 touch raven rune;
+		cq on
+	}
 */
 #class {ratinglist} {kill}
 #class {combat_que} {kill}
