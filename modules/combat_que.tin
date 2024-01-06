@@ -2,7 +2,7 @@
 /*
     Usage:
         Add 'cq reset' to corpsetrig
-        Add some cue items, 'cq add <name> <rating> <when> <repeat> <cmd(s)>'
+        Add some cue items, 'cq add <name> <rating> <when> <repeat> <cmd>'
         Start the que, 'cq on'
     
     Data format:
@@ -23,17 +23,6 @@
         
     Todo:
         Investigate ways of resetting rating when leaving a dungeon and manually running around
-	Mob-based usage
-
-    Example for Gentech:
-	#alias {cq_setup}
-	{
-		cq clear;
-		cq add ewell 7 start 0 (energy well;
-		cq add owl 9 end 0 touch owl rune;
-		cq add raven 9 start 0 touch raven rune;
-		cq on
-	}
 */
 #class {ratinglist} {kill}
 #class {combat_que} {kill}
@@ -49,15 +38,26 @@
 
 #alias {cqload} {#read .tt/3k/modules/combat_que.tin}
 
+#nop Example que
+#alias {cq_example}
+{
+    cq clear;
+    cq add ewell 7 start 0 (energy well;
+    cq add owl 9 end 0 touch owl rune;
+    cq add raven 9 start 0 touch raven rune;
+    cq add protection 7 low 0 #if {"$mobname" == "Blue Dolphin"} {(protection};
+    cq on
+}
+
 #alias {cq}
 {
     #switch {"%1"} {
         #case "" {
             #local {cuelist} {};
-            #format {cuelist} {<fca> COMBAT QUE                                            <088><eba>EN:$combat_que_on AR:$area_rating<088>} {$cuelist};
-            #format {cuelist} {%s\n<eba>=================================================================<088>} {$cuelist};
-            #format {cuelist} {%s\n<fca> %-10s %-30s %-5s %s %s %s %s<088>} {$cuelist} {Name} {Command} {When} {Rtg} {Rep} {Rdy} {Lck};
-            #format {cuelist} {%s\n<eba>-----------------------------------------------------------------<088>} {$cuelist};
+            #format {cuelist} {<fca> COMBAT QUE                                                         <088><eba>EN:$combat_que_on AR:$area_rating<088>} {$cuelist};
+            #format {cuelist} {%s\n<eba>==============================================================================<088>} {$cuelist};
+            #format {cuelist} {%s\n<fca> %-10s %-5s %s %s %s %s %s<088>} {$cuelist} {Name} {When} {Rtg} {Rep} {Rdy} {Lck} {Command};
+            #format {cuelist} {%s\n<eba>------------------------------------------------------------------------------<088>} {$cuelist};
             #if {&{combat_que[]} == 0} {
                 #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
             } {
@@ -70,21 +70,21 @@
                     };#elseif {$combat_que[$ability][ready] == 1 && $combat_que[$ability][locked] == 0} {
                         #variable {cuelinecolour} {<128>}
                     };
-                    #format {cuelist} {%s\n%s %-10s %-30s %-5s  %d   %d   %d   %d} {$cuelist} {$cuelinecolour} {$ability} {$combat_que[$ability][cmd]} {$combat_que[$ability][when]} {$combat_que[$ability][rating]} {$combat_que[$ability][repeat]} {$combat_que[$ability][ready]} {$combat_que[$ability][locked]};
+                    #format {cuelist} {%s\n%s %-10s %-5s  %d   %d   %d   %d  %s} {$cuelist} {$cuelinecolour} {$ability} {$combat_que[$ability][when]} {$combat_que[$ability][rating]} {$combat_que[$ability][repeat]} {$combat_que[$ability][ready]} {$combat_que[$ability][locked]} {$combat_que[$ability][cmd]};
                 }
             };
             #echo {$cuelist<088>}
         };
         #case "add" {
-            #regexp {%0} {add %w {-?[0-9]{1}} %w {[0-1]{1}} {.*}} {
+            #regexp {%0} {{add (\w+) (-?[0-9]) (start|end|high|med|low) ([0-9]) (.*)}} {
                 #nop cq add <name> <rating> <when> <repeat> <cmd>;
-                #nop cq add   %1     %2       %3      %4     %5;
+                #nop cq add   %2     %3       %4      %5     %6;
                 #local {cdname} {};
-                #format {cdname} {%l} {&1};
-                #variable {combat_que[$cdname][rating]}  {&2};
-                #format {combat_que[$cdname][when]} {%l} {&3};
-                #variable {combat_que[$cdname][repeat]}  {&4};
-                #variable {combat_que[$cdname][cmd]}     {&5};
+                #format {cdname} {%l} {&2};
+                #variable {combat_que[$cdname][rating]}  {&3};
+                #format {combat_que[$cdname][when]} {%l} {&4};
+                #variable {combat_que[$cdname][repeat]}  {&5};
+                #variable {combat_que[$cdname][cmd]}     {&6};
                 #variable {combat_que[$cdname][locked]}  {0};
                 #variable {combat_que[$cdname][ready]}   {1};
                 #echo {<eba>Combat que '$cdname' added.<088>}
@@ -356,6 +356,11 @@
 #action {^A charge of emerald energy from the relic fractally crawls across your head}
 {
     update_cooldown owl 0
+}
+
+#action {^A shimmering sphere of energy engulfs you}
+{
+    update_cooldown protection 0
 }
 
 #class {combat_que} {close}
