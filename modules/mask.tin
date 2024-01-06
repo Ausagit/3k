@@ -212,9 +212,9 @@
 		};
 		#case "necromancer" {
 			#if {%1 == 2} {
-				#variable {result} {qtrance preserve get/absorb}
-			} {
 				#variable {result} {qtrance preserve get/absorb/preserve get/absorb}
+			} {
+				#variable {result} {qtrance preserve get/absorb}
 			}
 		};
 		#case "fremen" {
