@@ -6,10 +6,12 @@
 	Use the mu alias from update_status when your desired conditions are met to
 	trigger a reclaim. Can be easily modified to suit your guild preferences.
 
+	Change the order of corpse usage in the @select_corpse{} function to your liking.
+
 	Variables:
 	$mask_on			- 0: off, 1: own mask, 2: anyone's mask
 	$recently_reclaimed	- prevent simultaneous reclaims and allow for GP to settle
-	$mask_check			- set to 1, if 1 after 3s, mask failed, reclaim
+	$mask_check			- set to 1, if 1 after 3s during a reclaim, mask failed, reclaim
 	$ses_name			- your name from Inix's tintin setup
 	$guild				- your guild name from Inix's tintin setup
 
@@ -123,12 +125,12 @@
 	#if {$recently_reclaimed == 1} {
 		#echo {<ecf>You are still busy reclaiming!<088>}
 	} {
-		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] > 0} {
+		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower] > 0} {
 			#variable recently_reclaimed 1;
 			#if {$corpses[inventory] > 0} {
 				#send !drop corpse;
-				@guild_reclaim{};
-				#delay {6} {finish_reclaim}
+				@guild_reclaim{1};
+				#delay {3} {finish_reclaim}
 			} {
 				#if {$mask_on != 0} {
 					#variable {mask_check} {1};
@@ -138,14 +140,14 @@
 						#if {$mask_check} {
 							#variable {mask_check} {0};
 							#if {$mask_on == 1} {#send !trace glyph};
-							@guild_reclaim{}
+							@guild_reclaim{1}
 						};
 						#delay {3} {finish_reclaim}
 					}
 				} {
 					@select_corpse{};
-					@guild_reclaim{};
-					#delay {6} {finish_reclaim}
+					@guild_reclaim{1};
+					#delay {3} {finish_reclaim}
 				}
 			}
 		}
@@ -165,8 +167,7 @@
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#variable {mask_check} {0};
 		#if {$mask_on == 1} {#send !trace glyph};
-		@guild_reclaim{};
-		@guild_reclaim{};
+		@guild_reclaim{2};
 	} {
 		#variable {mask_check} {0}
 	}
@@ -179,7 +180,7 @@
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#variable {mask_check} {0};
 		#if {$mask_on == 1} {#send !trace glyph};
-		@guild_reclaim{};
+		@guild_reclaim{1};
 	} {
 		#variable {mask_check} {0}
 	}
@@ -187,12 +188,14 @@
 
 #function {select_corpse}
 {
-	#if {$corpses[coffin] > 0} {
-		#variable {result} {unwrap}
-	}; #elseif {$corpses[freezer] > 0} {
+	#if {$corpses[freezer] > 0} {
 		#variable {result} {deslab}
-	}; #else {
+	}; #elseif {$corpses[cooler] > 0} {
 		#variable {result} {uncooler corpse}
+	}; #elseif {$corpses[coffin] > 0} {
+			#variable {result} {unwrap}
+	}; #else {
+		#variable {result} {=give corpse}
 	}
 }
 
@@ -201,43 +204,95 @@
 	#nop add or update your guild-specific corpse handling here;
 	#switch {"$guild"} {
 		#case "gentech" {
-			#variable {result} {recharge;reclaim}
+			#if {%1 == 2} {
+				#variable {result} {recharge;reclaim;recharge;reclaim}
+			} {
+				#variable {result} {recharge;reclaim}
+			}
 		};
 		#case "necromancer" {
-			#variable {result} {qtrance preserve get/absorb}
+			#if {%1 == 2} {
+				#variable {result} {qtrance preserve get/absorb}
+			} {
+				#variable {result} {qtrance preserve get/absorb/preserve get/absorb}
+			}
 		};
 		#case "fremen" {
-			#variable {result} {reclaim}
+			#if {%1 == 2} {
+				#variable {result} {reclaim;reclaim}
+			} {
+				#variable {result} {reclaim}
+			}
 		};
 		#case "knight" {
-			#variable {result} {bury corpse}
+			#if {%1 == 2} {
+				#variable {result} {bury corpse;bury corpse}
+			} {
+				#variable {result} {bury corpse}
+			}
 		};
 		#case "cyborg" {
-			#variable {result} {decompose corpse}
+			#if {%1 == 2} {
+				#variable {result} {decompose corpse;decompose corpse}
+			} {
+				#variable {result} {decompose corpse}
+			}
 		};
 		#case "changeling" {
-			#variable {result} {absorb}
+			#if {%1 == 2} {
+				#variable {result} {absorb;absorb}
+			} {
+				#variable {result} {absorb}
+			}
 		};
 		#case "angel" {
-			#variable {result} {disperse}	
+			#if {%1 == 2} {
+				#variable {result} {disperse;disperse}
+			} {
+				#variable {result} {disperse}
+			}
 		};
 		#case "bard" {
-			#variable {result} {perform dirge}	
+			#if {%1 == 2} {
+				#variable {result} {perform dirge;perform dirge}
+			} {
+				#variable {result} {perform dirge}
+			}
 		};
 		#case "jedi" {
-			#variable {result} {absorb energy}	
+			#if {%1 == 2} {
+				#variable {result} {absorb energy;absorb energy}
+			} {
+				#variable {result} {absorb energy}
+			}
 		};
 		#case "monk" {
-			#variable {result} {study corpse}	
+			#if {%1 == 2} {
+				#variable {result} {study corpse;study corpse}
+			} {
+				#variable {result} {study corpse}
+			}
 		};
 		#case "priest" {
-			#variable {result} {offer corpse}	
+			#if {%1 == 2} {
+				#variable {result} {offer corpse;offer corpse}
+			} {
+				#variable {result} {offer corpse}
+			}
 		};
 		#case "bladesinger" {
-			#variable {result} {salute corpse}	
+			#if {%1 == 2} {
+				#variable {result} {salute corpse;salute corpse}
+			} {
+				#variable {result} {salute corpse}
+			}
 		};
 		#case "mage" {
-			#variable {result} {cast corpse blast}	
+			#if {%1 == 2} {
+				#variable {result} {cast corpse blast;cast corpse blast}
+			} {
+				#variable {result} {cast corpse blast}
+			}
 		};
 		#default {
 			#echo {** Unhandled guild type in reclaim.tim! **};
