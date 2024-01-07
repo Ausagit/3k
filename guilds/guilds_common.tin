@@ -1,8 +1,13 @@
-#variable {corpsetrig_on} {1}
+#read {.tt/3k/modules/backpack.tin}
+#read {.tt/3k/modules/onkill.tin}
+#read {.tt/3k/modules/scalers.tin}
+#read {.tt/3k/modules/combat_que.tin}
+#read {.tt/3k/modules/mask.tin}
 
-/*
-	Helper functions
-*/
+#variable {corpsetrig_on} {1}
+#variable {winchroom} {152}
+
+#nop helper functions
 #function {tolower}
 {
 	#format {result} {%l} {%1}
@@ -29,21 +34,36 @@
 		#variable {result} {<faa>%1<088>}
 	}
 }
-
 #function {storedcorpses}
 {
 	#math {result} {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler]}
 }
 
 
-/*
-	Corpse trigger & functions
-*/
 #nop the corpse trig action is defined here and will work before a stepper is run, once run it will override this action
 #action {^=K=%1 dealt the killing blow to} {corpsetrig}
 #alias {cte} {#variable {corpsetrig_on} {1};#echo {<bfb>Corpse trigger enabled.<088>}}
 #alias {ctp} {#variable {corpsetrig_on} {2};#echo {<bfb>Corpse trigger enabled (party).<088>}}
 #alias {ctd} {#variable {corpsetrig_on} {0};#echo {<bfb>Corpse trigger disabled.<088>}}
+
+#nop miscellaneous helpful stuff
+#action {^Resistances:} {#echo {<028>                Edg   Blu   Fir   Ice   Acd   Ele   Psi   Nrg   Psn   Rad<088>}}
+#action {^Everything slowly fades into blackness...$} {.stop}
+
+#nop helpful client stuff
+#alias {sideon} {redraw map on;redraw canvas on}
+#alias {sideoff} {redraw map off;redraw canvas off}
+
+#nop helpful rolm stuff
+#alias {setwr} {#variable {winchroom} {$roomvnum}}
+#action {^The light fades and you materialize elsewhere....}
+{
+    #if {"$winchroom" != ""} {#map goto $winchroom};
+}
+#action {^A small golden strand falls from the relic and imbeds itself into the ground.}
+{
+    #variable {winchroom} {$roomvnum};
+}
 
 #nop mythic knight's shield
 #action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip}
@@ -51,4 +71,16 @@
 #action {^There is no reason to 'bash' here} {on_kshield_remove}
 #action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan}
 
+#nop supplements to 'cbrief on mo'
+#gag {^%* tickled %* in the stomach}
+#gag {^%* struck but did no damage}
+#gag {^Your great speed allows}
+#gag {^You swing the Sword of Spirit at your foe}
+#gag {^You lash out with the Sword of Spirit}
+#gag {^>$}
 
+#nop helpful area aliases & actions
+#alias {zhb1} {go zelligars;scaler 130;n;n;w;n;nw;e;n;e;e;s;s}
+#alias {zhb2} {search shelves;get gloves;n;n;w;w;w;s;get key;n;e;e;e;s;s;e;e;e;n;e;e;e;n;n;n;n;w;w;w;w;s;s;s;s;unlock door;open door;w;get key;e;n;n;n;n;e;e;e;e;s;s;s;s;w;w;w;s;w;w;w;n;n;w;w;n;unlock door;open door;w;w;s;s;sw;w;w;w;n;nw;e;e;e;e;n;ne;e;e;e}
+#alias {secz40} {#action {^Section 40 (ne,n,s)} {#map go 25088};#send !enter $sectionz[40];pause game;play;unpause game;botclear;ba sectionz40_short;cycle 1;#delay {0.5} {#map go 25088}}
+#action {{Z|z} {R|r}eset} {#bell}
