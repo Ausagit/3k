@@ -7,6 +7,8 @@
 #variable {corpsetrig_on} {1}
 #variable {winchroom} {152}
 
+#action {[PARTY]}
+
 #nop helper functions
 #function {tolower}
 {
@@ -84,3 +86,16 @@
 #alias {zhb2} {search shelves;get gloves;n;n;w;w;w;s;get key;n;e;e;e;s;s;e;e;e;n;e;e;e;n;n;n;n;w;w;w;w;s;s;s;s;unlock door;open door;w;get key;e;n;n;n;n;e;e;e;e;s;s;s;s;w;w;w;s;w;w;w;n;n;w;w;n;unlock door;open door;w;w;s;s;sw;w;w;w;n;nw;e;e;e;e;n;ne;e;e;e}
 #alias {secz40} {#action {^Section 40 (ne,n,s)} {#map go 25088};#send !enter $sectionz[40];pause game;play;unpause game;botclear;ba sectionz40_short;cycle 1;#delay {0.5} {#map go 25088}}
 #action {{Z|z} {R|r}eset} {#bell}
+
+
+#action {^[PARTY] %1: {(d|D)ungeons?}}
+{
+	#read {.tt/3k/modules/dungeonreport.tin}
+}
+
+#action {^[PARTY] %1: {(w|W)where are we?}}
+{
+	#if {$bot == 1} {
+		#send !ptell We are in $bots[stepper] room #$roomvnum, $path_pos/$path_len.
+	}
+}
