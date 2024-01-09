@@ -1,0 +1,31 @@
+#class {watchdog} {kill}
+#class {watchdog} {open}
+
+#variable {watchdogcount} {0}
+
+#alias {startwatchdog}
+{
+	#echo {<fca>*WATCHDOG STARTED*<088>};
+	#ticker {watchdog} {
+		#if {$mip[round] == 0 && $bot == 1 && $halt == 0 && $stepping == 0} {
+			#math {watchdogcount} {$watchdogcount + 1};
+			#echo {<fca>*WATCHDOG $watchdogcount*<088>};
+			#if {$watchdogcount >= 3} {
+				#echo {<fca>*WATCHDOG RESUME*<088>};
+				#variable {watchdogcount} {0};
+				..
+			}
+		} {
+			#variable {watchdogcount} {0}
+		}
+	} {6}
+}
+
+#alias {stopwatchdog}
+{
+	#echo {<fca>*WATCHDOG STOPPED*<088>};
+	#kill {ticker} {watchdog};
+	#variable {watchdogcount} {0}
+}
+
+#class {watchdog} {close}
