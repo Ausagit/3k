@@ -1,0 +1,8 @@
+#class {dungeonreport} {kill}
+#class {dungeonreport} {open}
+
+#action {^- %1[} {#delay {0.5} {#send !ptell %1}}
+#delay {0.1} {#send !dungeons clear all;#send !dungeons}
+#delay {1} {#class {dungeonreport} {kill}}
+
+#class {dungeonreport} {close}
