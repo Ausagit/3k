@@ -6,7 +6,10 @@
 	Use the mu alias from update_status when your desired conditions are met to
 	trigger a reclaim. Can be easily modified to suit your guild preferences.
 
-	Change the order of corpse usage in the @select_corpse{} function to your liking.
+	Change the order of corpse usage in the _select_corpse to your liking.
+
+	Note, guild followers are not included as they can be unreliable due to no port zones etc.
+	If you use your follower to carry corpses, add some code elsewhere to shuffle corpses.
 
 	Variables:
 	$mask_on			- 0: off, 1: own mask, 2: anyone's mask
@@ -27,9 +30,7 @@
 			#delay {reclaim} {mu} {0.1}
 		} {
 			#delay {reclaim} {
-				#send !recharge;
-				#send !unwrap;
-				#send !reclaim
+				#nop do your basic guild corpse commands;
 			} {0.1}
 		}
 	};
@@ -86,6 +87,33 @@
     }
 }
 
+#nop use this alias to either manually use a corpse or from a script triggered on low GP
+#alias {mu}
+{
+	#if {$recently_reclaimed == 1} {
+		#echo {<ecf>You are still busy reclaiming!<088>}
+	} {
+		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler]} {
+			#variable recently_reclaimed 1;
+			#if {$corpses[inventory] > 0} {
+				#send !drop corpse;
+				_guild_reclaim 1;
+				#delay {3} {_finish_reclaim}
+			} {
+				#if {$mask_on != 0} {
+					#variable {mask_check} {1};
+					#if {$mask_on == 1} {#send !trace glyph};
+					_select_corpse
+				} {
+					_select_corpse
+					_guild_reclaim 1;
+					#delay {3} {_finish_reclaim}
+				}
+			}
+		}
+	}
+}
+
 #action {^The mask shines brightly}
 {
 	#variable {mask_glyph_state} {on};
@@ -119,46 +147,33 @@
 	#variable {mask_glyph_state} {unknown}
 }
 
-#nop use this alias to either manually use a corpse or 
-#alias {mu}
-{
-	#if {$recently_reclaimed == 1} {
-		#echo {<ecf>You are still busy reclaiming!<088>}
+#nop override this action from corpses.tin
+#action {^{The coffin expels (a|your selected) corpse!}} {
+	#if {$corpses[coffin] > 0} {
+		#math {corpses[coffin]} {$corpses[coffin] - 1}
 	} {
-		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower] > 0} {
-			#variable recently_reclaimed 1;
-			#if {$corpses[inventory] > 0} {
-				#send !drop corpse;
-				@guild_reclaim{1};
-				#delay {3} {finish_reclaim}
-			} {
-				#if {$mask_on != 0} {
-					#variable {mask_check} {1};
-					#if {$mask_on == 1} {#send !trace glyph};
-					@select_corpse{};
-					#delay {3} {
-						#if {$mask_check} {
-							#variable {mask_check} {0};
-							#if {$mask_on == 1} {#send !trace glyph};
-							@guild_reclaim{1}
-						};
-						#delay {3} {finish_reclaim}
-					}
-				} {
-					@select_corpse{};
-					@guild_reclaim{1};
-					#delay {3} {finish_reclaim}
-				}
-			}
-		}
-	}
-}
+		#variable {corpses[coffin]} {0}
+	};
+	_cleanup_reclaim
+} {1}
 
-#alias {finish_reclaim}
+#nop override this action from corpses.tin
+#action {^You shake the frame and out drops }
 {
-	#variable {recently_reclaimed} {0};
-	#echo {<ecf>Finished reclaim.<088>}
-}
+	#if {$corpses[freezer] > 0} {
+		#math {corpses[freezer]} {$corpses[freezer] - 1}
+	} {
+		#variable {corpses[freezer]} {0}
+	};
+	_cleanup_reclaim
+} {1}
+
+#nop override this action from corpses.tin
+#action {^You activate the Ultra-Cooler to retrieve }
+{
+	#math {corpses[cooler]} {$corpses[cooler] - 1};
+	_cleanup_reclaim
+} {1}
 
 #action {^%1's eyes glow bright green upon the fallen}
 {
@@ -167,7 +182,8 @@
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#variable {mask_check} {0};
 		#if {$mask_on == 1} {#send !trace glyph};
-		@guild_reclaim{2};
+		_guild_reclaim 2;
+		#delay {3} {_finish_reclaim}
 	} {
 		#variable {mask_check} {0}
 	}
@@ -180,126 +196,143 @@
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#variable {mask_check} {0};
 		#if {$mask_on == 1} {#send !trace glyph};
-		@guild_reclaim{1};
+		_guild_reclaim 1;
+		#delay {3} {_finish_reclaim}
 	} {
 		#variable {mask_check} {0}
 	}
 }
 
-#function {select_corpse}
+#alias {_finish_reclaim}
 {
-	#if {$corpses[freezer] > 0} {
-		#variable {result} {deslab}
-	}; #elseif {$corpses[cooler] > 0} {
-		#variable {result} {uncooler corpse}
-	}; #elseif {$corpses[coffin] > 0} {
-			#variable {result} {unwrap}
-	}; #else {
-		#variable {result} {=give corpse}
+	#variable {recently_reclaimed} {0};
+	#echo {<ecf>Finished reclaim.<088>}
+}
+
+#alias {_cleanup_reclaim}
+{
+	#delay {3} {
+		#if {$mask_check} {
+			#variable {mask_check} {0};
+			#if {$mask_on == 1} {#send !trace glyph};
+			#echo {<ecf>No mask triggered, reclaiming corpse...<088>};
+			_guild_reclaim 1;
+			#delay {3} {_finish_reclaim}
+		}
 	}
 }
 
-#function {guild_reclaim}
+#alias {_select_corpse}
+{
+	#if {$corpses[freezer] > 0} {
+		#send !deslab
+	}; #elseif {$corpses[cooler] > 0} {
+		#send !uncooler corpse
+	}; #elseif {$corpses[coffin] > 0} {
+		#send !unwrap
+	}
+}
+
+#alias {_guild_reclaim}
 {
 	#nop add or update your guild-specific corpse handling here;
 	#switch {"$guild"} {
 		#case "gentech" {
 			#if {%1 == 2} {
-				#variable {result} {recharge;reclaim;recharge;reclaim}
+				recharge;reclaim;recharge;reclaim
 			} {
-				#variable {result} {recharge;reclaim}
+				recharge;reclaim
 			}
 		};
 		#case "necromancer" {
 			#if {%1 == 2} {
-				#variable {result} {qtrance preserve get/absorb/preserve get/absorb}
+				qtrance preserve get/absorb/preserve get/absorb
 			} {
-				#variable {result} {qtrance preserve get/absorb}
+				qtrance preserve get/absorb
 			}
 		};
 		#case "fremen" {
 			#if {%1 == 2} {
-				#variable {result} {reclaim;reclaim}
+				reclaim;reclaim
 			} {
-				#variable {result} {reclaim}
+				reclaim
 			}
 		};
 		#case "knight" {
 			#if {%1 == 2} {
-				#variable {result} {bury corpse;bury corpse}
+				bury corpse;bury corpse
 			} {
-				#variable {result} {bury corpse}
+				bury corpse
 			}
 		};
 		#case "cyborg" {
 			#if {%1 == 2} {
-				#variable {result} {decompose corpse;decompose corpse}
+				decompose corpse;decompose corpse
 			} {
-				#variable {result} {decompose corpse}
+				decompose corpse
 			}
 		};
 		#case "changeling" {
 			#if {%1 == 2} {
-				#variable {result} {absorb;absorb}
+				absorb;absorb
 			} {
-				#variable {result} {absorb}
+				absorb
 			}
 		};
 		#case "angel" {
 			#if {%1 == 2} {
-				#variable {result} {disperse;disperse}
+				disperse;disperse
 			} {
-				#variable {result} {disperse}
+				disperse
 			}
 		};
 		#case "bard" {
 			#if {%1 == 2} {
-				#variable {result} {perform dirge;perform dirge}
+				perform dirge;perform dirge
 			} {
-				#variable {result} {perform dirge}
+				perform dirge
 			}
 		};
 		#case "jedi" {
 			#if {%1 == 2} {
-				#variable {result} {absorb energy;absorb energy}
+				absorb energy;absorb energy
 			} {
-				#variable {result} {absorb energy}
+				absorb energy
 			}
 		};
 		#case "monk" {
 			#if {%1 == 2} {
-				#variable {result} {study corpse;study corpse}
+				study corpse;study corpse
 			} {
-				#variable {result} {study corpse}
+				study corpse
 			}
 		};
 		#case "priest" {
 			#if {%1 == 2} {
-				#variable {result} {offer corpse;offer corpse}
+				offer corpse;offer corpse
 			} {
-				#variable {result} {offer corpse}
+				offer corpse
 			}
 		};
 		#case "bladesinger" {
 			#if {%1 == 2} {
-				#variable {result} {salute corpse;salute corpse}
+				salute corpse;salute corpse
 			} {
-				#variable {result} {salute corpse}
+				salute corpse
 			}
 		};
 		#case "mage" {
 			#if {%1 == 2} {
-				#variable {result} {cast corpse blast;cast corpse blast}
+				cast corpse blast;cast corpse blast
 			} {
-				#variable {result} {cast corpse blast}
+				cast corpse blast
 			}
 		};
 		#default {
-			#echo {** Unhandled guild type in reclaim.tim! **};
-			#bell;
-			#variable {result} { }
+			#echo {** Unhandled guild type in mask.tin! **};
+			#bell
 		}
 	}
-};
+}
 
 #class {mask} {close}
