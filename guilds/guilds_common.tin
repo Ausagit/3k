@@ -7,8 +7,6 @@
 #variable {corpsetrig_on} {1}
 #variable {winchroom} {152}
 
-#action {[PARTY]}
-
 #nop helper functions
 #function {tolower}
 {
