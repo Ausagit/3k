@@ -108,14 +108,6 @@
 	#nop switch bias using the bias module, it will .. when bias change is finished or not required;
 	#if {$bias_module} {
 		bias run
-	};
-	#delay {2} {#send !thumb}
-}
-
-#action {^You give everyone a thumbs up.}
-{
-	#if {$bot == 1} {
-		#delay {1} {.resume}
 	}
 }
 
