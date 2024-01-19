@@ -9,14 +9,15 @@
         You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below
     
     Data format:
-        $combat_que[ability]          - short description of the ability
-        $combat_que[ability][cmd]     - the command to send to the mud
-        $combat_que[ability][rating]  - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
-        $combat_que[ability][ready]   - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
-        $combat_que[ability][repeat]  - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
-        $combat_que[ability][when]    - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
-        $combat_que[ability][locked]  - flag to lock the ability after the first use if it's non-repeatable, reset on kill
-        $combat_que[ability][enabled] - flag to enable/disable the comabt que item manually
+        $combat_que[ability]            - short description of the ability
+        $combat_que[ability][cmd]       - the command to send to the mud, can include some scripting elements
+        $combat_que[ability][condition] - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "
+        $combat_que[ability][rating]    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
+        $combat_que[ability][ready]     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
+        $combat_que[ability][repeat]    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
+        $combat_que[ability][when]      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
+        $combat_que[ability][locked]    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
+        $combat_que[ability][enabled]   - flag to enable/disable the comabt que item manually
 
     <when> options:
         start: rounds < 5, health >= 90%
@@ -48,10 +49,10 @@
 #alias {cq_example}
 {
     cq clear;
-    cq add ewell 7 start 0 (energy well;
-    cq add owl 9 end 0 touch owl rune;
-    cq add raven 9 start 0 touch raven rune;
-    cq add heal 0 any 1 #if {$:my[hp][perc] < 25} {(heal $:ses_name};
+    cq add ewell/7/start/0/(energy well;
+    cq add owl/9/end/0/touch owl rune;
+    cq add raven/9/start/0/touch raven rune;
+    cq add heal/1/any/1/(heal $:ses_name/$:my[hp][current] < 1000;
     cq on
 }
 
@@ -62,7 +63,7 @@
             #local {cuelist} {};
             #format {cuelist} {<fca> COMBAT QUE                                                         <088><eba>EN:$combat_que_on AR:$area_rating<088>} {$cuelist};
             #format {cuelist} {%s\n<eba>==============================================================================<088>} {$cuelist};
-            #format {cuelist} {%s\n<fca> %-12s %s %-5s %s %s %s %s<088>} {$cuelist} {Name} {Rtg} {When} {Rep} {Rdy} {Lck} {Command};
+            #format {cuelist} {%s\n<fca> %-12s %s %-5s %s %s %s %-20s %s<088>} {$cuelist} {Name} {Rtg} {When} {Rep} {Rdy} {Lck} {Command} {Condition};
             #format {cuelist} {%s\n<eba>------------------------------------------------------------------------------<088>} {$cuelist};
             #if {&{combat_que[]} == 0} {
                 #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
@@ -78,27 +79,36 @@
                     };#elseif {$combat_que[$ability][ready] == 1 && $combat_que[$ability][locked] == 0} {
                         #variable {cuelinecolour} {<128>}
                     };
-                    #format {cuelist} {%s\n%s %-12s  %d  %-5s  %d   %d   %d  %s} {$cuelist} {$cuelinecolour} {$ability} {$combat_que[$ability][rating]} {$combat_que[$ability][when]} {$combat_que[$ability][repeat]} {$combat_que[$ability][ready]} {$combat_que[$ability][locked]} {$combat_que[$ability][cmd]};
+                    #format {cuelist} {%s\n%s %-12s  %d  %-5s  %d   %d   %d  %-20s %s} {$cuelist} {$cuelinecolour} {$ability} {$combat_que[$ability][rating]} {$combat_que[$ability][when]} {$combat_que[$ability][repeat]} {$combat_que[$ability][ready]} {$combat_que[$ability][locked]}  {$combat_que[$ability][cmd]} {$combat_que[$ability][condition]};
                 }
             };
             #echo {$cuelist<088>}
         };
         #case "add" {
-            #regexp {%0} {{add (\w{1,12}) (-?[0-9]) (start|end|high|med|low|any) ([0-9]) (.*)}} {
-                #nop cq add <name> <rating> <when> <repeat> <cmd>;
-                #nop cq add   %2     %3       %4      %5     %6;
+            #regexp {%0} {{add ([a-zA-z0-9_]{1,12})\/(-?[0-9])\/(start|end|high|med|low|any)\/([0-9])\/([a-zA-Z0-9_\$\:='@\( ]+)(?:\/)?(.*)?}} {
+                #nop cq add <name>/<rating>/<when>/<repeat>/<cmd>/<condition>;
+                #nop cq add   %2     %3       %4      %5     %6       %7;              
                 #local {cdname} {};
                 #format {cdname} {%l} {&2};
-                #variable {combat_que[$cdname][rating]}  {&3};
-                #format {combat_que[$cdname][when]} {%l} {&4};
-                #variable {combat_que[$cdname][repeat]}  {&5};
-                #variable {combat_que[$cdname][cmd]}     {&6};
-                #variable {combat_que[$cdname][locked]}  {0};
-                #variable {combat_que[$cdname][ready]}   {1};
+
+                #nop set some defaults;
+                #variable {combat_que[$cdname][locked]} {0};
+                #variable {combat_que[$cdname][ready]} {1};
                 #variable {combat_que[$cdname][enabled]} {1};
+
+                #nop apply the variables;
+                #variable {combat_que[$cdname][rating]} {&3};
+                #variable {combat_que[$cdname][when]} {&4};
+                #variable {combat_que[$cdname][repeat]} {&5};
+                #variable {combat_que[$cdname][cmd]} {&6};
+                #variable {combat_que[$cdname][condition]} {&7};
+
+                #nop some housekeeping;
+                #replace {combat_que[$cdname][condition]} {'} {"};
+
                 #echo {<eba>Combat que '$cdname' added.<088>}
             } {
-                #echo {<eba>Syntax is:\ncq add <name:12 char max> <rating:0-9> <when:start/high/med/low/end/any> <repeat:0/1> <command><088>}
+                #echo {<eba>Syntax is:\ncq add name/rating/when/repeat/command/condition<088>}
             }
         };
         #case "remove" {
@@ -160,7 +170,10 @@
         #case "run" {
             #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
             {
-                #foreach {*combat_que[]} {ability} {       
+                #foreach {*combat_que[]} {ability} {      
+                    #variable {exec} {};
+                    #variable {exec_result} {0};
+
                     #if {$combat_que[$ability][ready] == 1 && $combat_que[$ability][enabled] == 1} {
                         #if {$cq_debug} {#echo {CQ: $ability ready}};
         
@@ -225,13 +238,26 @@
                             #if {$cq_debug} {#echo {CQ: $ability not executed: repeat: locked}};
                             #continue
                         };
-        
+
+                        #if {"$combat_que[$ability][condition]" != ""} {
+                            #variable {exec} {#if {$combat_que[$ability][condition]} {#variable exec_result 1}};
+                            #replace {exec} {$:} {$};
+                            #replace {exec} {'} {"};
+                            #if {$cq_debug} {#echo {CQ: Executing "$exec"}};
+                            $exec;
+                            #if {$exec_result == 0} {
+                                #if {$cq_debug} {#echo {CQ: $ability not executed: condition not met}};
+                                #continue
+                            }                       
+                        };
+                        
+                        #nop passed all conditions, execute!;
                         #if {$combat_que[$ability][repeat] == 0} {
                             #variable {combat_que[$ability][locked]} {1}
                         };
         
                         #if {$cq_debug} {#echo {CQ: Executing $ability, cmd: $combat_que[$ability][cmd]}};
-                        #local {exec} {$combat_que[$ability][cmd]};
+                        #variable {exec} {$combat_que[$ability][cmd]};
                         #replace {exec} {$:} {$};
                         $exec
                     }
@@ -403,7 +429,7 @@
 
 #action {^You tear apart %* defenses!}
 {
-    upate_cooldown shred 0;
+    update_cooldown shred 0;
     #delay {shred} {update_cooldown shred 1} {540}
 }
 
@@ -418,6 +444,12 @@
     update_cooldown immortality 0;
     #nop in case of a complete nolifer;
     #delay {immortality} {update_cooldown immortality 1} {267840}
+}
+
+#action {^Energy flashes down from the sky, frying}
+{
+    update_cooldown fry 0;
+    #delay {fry} {update_cooldown fry 1} {3960}
 }
 
 #class {combat_que} {close}
