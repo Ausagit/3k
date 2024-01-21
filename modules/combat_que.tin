@@ -74,13 +74,6 @@
 {
     #switch {"%1"} {
         #case "" {
-            #list {combat_que} {indexate} {$sort_by};
-            #list {combat_que} {order};
-
-            #if {"$sort_by" == "priority"} {
-                #list {combat_que} {reverse}
-            };
-
             #local {cuelist} {};
             #format {cuelist} {<128> COMBAT QUE                                          SORT:<028>%-8s <088><128>EN:%s <128>AR:<028>%s<088>} {$sort_by} {@hmonoff{$combat_que_on}} {$area_rating} {$cuelist};
             #format {cuelist} {%s\n<028>==============================================================================<088>} {$cuelist};
@@ -89,6 +82,12 @@
             #if {&{combat_que[]} == 0} {
                 #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
             } {
+                #list {combat_que} {indexate} {$sort_by};
+                #list {combat_que} {order};
+                #if {"$sort_by" == "priority"} {
+                    #list {combat_que} {reverse}
+                };
+
                 #foreach {*combat_que[]} {index} {
                     #local {cuelinecolour} {<088>};
                     #if {$combat_que[$index][enabled] == 0} {
@@ -136,11 +135,16 @@
         };
         #case "clear" {
             #variable {combat_que} {};
+            #variable {combat_que_on} {0};
             #echo {<028>Combat que cleared.<088>}
         };
         #case "on" {
-            #variable {combat_que_on} {1};
-            #echo {<028>Combat que enabled.<088>}
+            #if {&{combat_que[]} != 0} {
+                #variable {combat_que_on} {1};
+                #echo {<028>Combat que enabled.<088>}
+            } {
+                #echo {<028>Combat que cannot be enabled because it's empty.<088>}
+            }
         };
         #case "off" {
             #variable {combat_que_on} {0};
@@ -193,9 +197,9 @@
         #case "run" {
             #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
             {
-            	#list {combat_que} {indexate} {priority};
-            	#list {combat_que} {order};
-            	#list {combat_que} {reverse};
+                #list {combat_que} {indexate} {priority};
+                #list {combat_que} {order};
+                #list {combat_que} {reverse};
 
                 #foreach {*combat_que[]} {index} {      
                     #variable {exec} {};
