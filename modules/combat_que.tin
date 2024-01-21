@@ -1,24 +1,25 @@
 #nop combat_que.tin
 /*
     Usage:
-        Add 'cq reset' to corpsetrig
-        Add some cue items, 'cq add <name> <rating> <when> <repeat> <cmd>'
-        Start the que, 'cq on'
+        Add 'cq reset' to corpsetrig to remove the locked status on each kill
+        Add some cue items, 'cq add name/rating/when/priority/repeat/cmd/condition'
+        Start the que, 'cq on'.
+        Manage the [ready] status by calling update_cooldown <name> <0/1> from actions, like the rod runes at the end of this file.
     
     Injecting script:
-        You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below
+        You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below.
     
-    Data format:
-        $combat_que[x][name]      - short name of the item
-        $combat_que[x][cmd]       - the command to send to the mud, can include some scripting elements
-        $combat_que[x][condition] - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "
-        $combat_que[x][rating]    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
-        $combat_que[x][ready]     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
-        $combat_que[x][repeat]    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
-        $combat_que[x][when]      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
-        $combat_que[x][locked]    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
-        $combat_que[x][enabled]   - flag to enable/disable the comabt que item manually
-        $combat_que[x][priority]  - 0-999 priority - the que is processed from highest priority to lowest
+    Que item options:
+        name      - short name of the item
+        rating    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
+        when      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
+        priority  - 0-999 priority - the que is processed from highest priority to lowest
+        repeat    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
+        cmd       - the command to send to the mud, can include some scripting elements
+        condition - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "        
+        ready     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
+        locked    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
+        enabled   - flag to enable/disable the comabt que item manually
 
     <when> options:
         start: rounds < 5, health >= 90%
@@ -53,9 +54,10 @@
 {
     cq clear;
     cq add ewell/7/start/999/0/(energy well;
-    cq add owl/9/end/0/0/touch owl rune;
+    cq add owl/8/end/0/0/touch owl rune;
     cq add raven/9/start/0/0/touch raven rune;
     cq add heal/1/any/0/1/(heal $:ses_name/$:my[hp][current] < 1000;
+    rate 8;
     cq on
 }
 
