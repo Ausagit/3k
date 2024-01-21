@@ -191,11 +191,12 @@
             #echo {<028>Coming soon...<088>}
         };
         #case "run" {
-            #list {combat_que} {indexate} {priority};
-            #list {combat_que} {order};
-            #list {combat_que} {reverse};
             #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
             {
+            	#list {combat_que} {indexate} {priority};
+            	#list {combat_que} {order};
+            	#list {combat_que} {reverse};
+
                 #foreach {*combat_que[]} {index} {      
                     #variable {exec} {};
                     #variable {exec_result} {0};
