@@ -9,15 +9,16 @@
         You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below
     
     Data format:
-        $combat_que[ability]            - short description of the ability
-        $combat_que[ability][cmd]       - the command to send to the mud, can include some scripting elements
-        $combat_que[ability][condition] - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "
-        $combat_que[ability][rating]    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
-        $combat_que[ability][ready]     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
-        $combat_que[ability][repeat]    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
-        $combat_que[ability][when]      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
-        $combat_que[ability][locked]    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
-        $combat_que[ability][enabled]   - flag to enable/disable the comabt que item manually
+        $combat_que[x][name]      - short name of the item
+        $combat_que[x][cmd]       - the command to send to the mud, can include some scripting elements
+        $combat_que[x][condition] - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "
+        $combat_que[x][rating]    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
+        $combat_que[x][ready]     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
+        $combat_que[x][repeat]    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
+        $combat_que[x][when]      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
+        $combat_que[x][locked]    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
+        $combat_que[x][enabled]   - flag to enable/disable the comabt que item manually
+        $combat_que[x][priority]  - 0-999 priority - the que is processed from highest priority to lowest
 
     <when> options:
         start: rounds < 5, health >= 90%
@@ -119,7 +120,7 @@
 
                 #echo {<028>Combat que '$cdname' added.<088>}
             } {
-                #echo {<028>Syntax is:\ncq add name/rating/when/repeat/command/condition<088>}
+                #echo {<028>Syntax is:\ncq add name/rating/when/priority/repeat/command/condition<088>}
             }
         };
         #case "remove" {
