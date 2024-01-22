@@ -38,7 +38,7 @@
 #variable {cpc_auto} {1}
 #variable {cpc_auto_min} {8}
 #variable {cpc_auto_max} {50}
-#variable {gentech[gxp][lasttnl]} {0}
+#variable {gentech[gxp][last]} {0}
 #variable {gentech[rc][last]} {0}
 #variable {gentech[gxp][round]} {0}
 #variable {gentech[rc][round]} {0}
@@ -79,10 +79,16 @@
 #alias {donateall} {donate all;donatebpall}
 #alias {trashall} {trashbpall}
 
+#alias {startrun}
+{
+    .stop;
+   	#delay {0.5} {fix all;home;bank;deposit all;withdraw 1000;home;guild;e;u;w;n;trashall;s;e;d;w;home;smithy;mapgo smithy;cdb 120 examine smith}
+}
+
 #alias {suitup}
 {
 	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw 100000;home;
-	guild;e;u;w;w;buy 3;buy 3;buy 4;buy 4;buy 4;buy 4;keep all;wear all;genarm sword;e;e;u;e;e;commence;
+	guild;e;u;w;w;#2 buy 3;#4 buy 4;keep all;wear all;genarm sword;e;e;u;e;e;commence;
 	#delay {25} {=call;=afollow on;=aswap on;=akill on;w;w;d;d;w;home;chaos;enter;s;s;w;w;enter;n;n;n;n;
 	#4 buy moon rocks;#2 put moon rocks in backpack 5;#2 put moon rocks in backpack 6;s;s;s;s;leave;e;e;n;n;vortex;home;
 	mapgo home}
@@ -673,20 +679,20 @@
 	#math {my[gp2][perc]} {$my[gp2][current] * 100 / $my[gp2][max]};
 
 	#NOP Build HP Bars;
-	#format {hp}			{%+4s} {@colscale{$my[hp][current];$my[hp][max]}};
-	#format {hp_max}		{%+4s} {<128>$my[hp][max]<088>};
+	#format {hp}			{%+5s} {@colscale{$my[hp][current];$my[hp][max]}};
+	#format {hp_max}		{%-5s} {<128>$my[hp][max]<088>};
 	#format {sp}			{%+4s} {@colscale{$my[sp][current];$my[sp][max]}};
 	#format {sp_max}		{%+4s} {<128>$my[sp][max]<088>};
-	#format {pu}			{%+4s} {@colscale{$my[gp1][current];$my[gp1][max]}};
-	#format {pu_max}		{%+4s} {<128>$my[gp1][max]<088>};
+	#format {pu}			{%+5s} {@colscale{$my[gp1][current];$my[gp1][max]}};
+	#format {pu_max}		{%-5s} {<128>$my[gp1][max]<088>};
 	#format {spu}			{%+4s} {<128>$my[gp2][current]<088>};
-	#format {gxpdetails}	{%+4s} {$gentech[gxprc]};
+	#format {gxpdetails}	{%-4s} {$gentech[gxprc]};
 	#format {ehealth}		{%+3s} {@colscale{$enemy[hp];100}};
 	#format {corpses[inventory]} {%d} {$corpses[inventory]};
     #format {corpses[truck]} {%d} {$corpses[truck]};
     #format {corpses[coffin]} {%d} {$corpses[coffin]};
     #format {corpses[freezer]} {%d} {$corpses[freezer]};
-	#format {roundcount} {%-3s} {$mip[round]};
+	#format {roundcount} {%-4s} {$mip[round]};
 
 	#var	{my[hp][graph]}		{@graph{$my[hp][current];$my[hp][max]}};
 	#var	{my[sp][graph]}		{@graph{$my[sp][current];$my[sp][max]}};
@@ -704,9 +710,9 @@
 	#format {botstatus} {%+3s/%-3s} {$path_pos} {$path_len};
 
 	#line ignore #showme {$mipp1 $mipp2 ${gstatus}} {-6};
-	#line ignore #showme {HP:${hp}/${hp_max}  SP:${sp}/${sp_max}  PU:${pu}/${pu_max}(${spu}) B:$botstatus    <168>G:<088><268>${gxpdetails} $onkill_status<088>} {-4};
+	#line ignore #showme {HP:${hp}/${hp_max} SP:${sp}/${sp_max}  PU:${pu}/${pu_max}(${spu}) B:$botstatus    <168>G:<088><268>${gxpdetails} $onkill_status<088>} {-4};
 
-	#line ignore #showme {HP:${my[hp][graph]} SP:${my[sp][graph]} PU:${my[gp1][graph]}        E:${enemy[graph]} R:$roundcount <088>CC:$corpsestatus} {-3};
+	#line ignore #showme {HP:${my[hp][graph]}  SP:${my[sp][graph]} PU:${my[gp1][graph]}        E:${enemy[graph]} R:$roundcount <088>CC:$corpsestatus} {-3};
 }
                                                         
 #class {gentech} {close}
