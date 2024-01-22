@@ -61,15 +61,6 @@
     cq on
 }
 
-#function {hmonoff}
-{
-	#if {%1 == 1} {
-		#variable {result} {<aea>ON<088>}
-	} {
-		#variable {result} {<eaa>OFF<088>}
-	}
-}
-
 #alias {cq}
 {
     #switch {"%1"} {
@@ -87,21 +78,17 @@
                 #if {"$sort_by" == "priority"} {
                     #list {combat_que} {reverse}
                 };
-
                 #foreach {*combat_que[]} {index} {
-                    #local {cuelinecolour} {<088>};
-                    #if {$combat_que[$index][enabled] == 0} {
-                        #variable {cuelinecolour} {<218>}
-                    };#elseif {$area_rating < $combat_que[$index][rating]} {
-                        #variable {cuelinecolour} {<108>}
-                    };#elseif {$combat_que[$index][ready] == 0} {
-                        #variable {cuelinecolour} {<218>}
-                    };#elseif {$combat_que[$index][ready] == 1 && $combat_que[$index][locked] == 1} {
-                        #variable {cuelinecolour} {<028>}
-                    };#elseif {$combat_que[$index][ready] == 1 && $combat_que[$index][locked] == 0} {
-                        #variable {cuelinecolour} {<128>}
-                    };
-                    #format {cuelist} {%s\n%s %-12s %-3d %-5s %-3d %-3d %-3d %-3d %-20s %s<088>} {$cuelist} {$cuelinecolour} {$combat_que[$index][name]} {$combat_que[$index][rating]} {$combat_que[$index][when]} {$combat_que[$index][priority]} {$combat_que[$index][repeat]} {$combat_que[$index][ready]} {$combat_que[$index][locked]}  {$combat_que[$index][cmd]} {$combat_que[$index][condition]};
+                    #format {cuelist} {%s\n %s%-12s<088> %s%-3d<088> %s%-5s<088> %-3d %-3d %s%-3d<088> %s%-3d<088> %-20s %s%s<088>} {$cuelist}
+                        {@check_colour{@check_enabled{$index}}} {$combat_que[$index][name]}
+                        {@check_colour{@check_rating{$index}}} {$combat_que[$index][rating]}
+                        {@check_colour{@check_when{$index}}} {$combat_que[$index][when]}
+                        {$combat_que[$index][priority]}
+                        {$combat_que[$index][repeat]}
+                        {@check_colour{@check_ready{$index}}} {$combat_que[$index][ready]}
+                        {@check_colour{@check_locked{$index}}} {$combat_que[$index][locked]}
+                        {$combat_que[$index][cmd]}
+                        {@check_colour{@check_condition{$index}}} {$combat_que[$index][condition]};
                 }
             };
             #echo {$cuelist<088>}
@@ -114,11 +101,16 @@
                 #nop some housekeeping;
                 #local {cdname} {};                
                 #format {cdname} {%l} {&2};
+                #local {index} {@get_index{$cdname}};
                 #local {condition} {&8};
                 #replace {condition} {'} {"};
 
-                #list {combat_que} {add} {{{name}{$cdname}{rating}{&3}{when}{&4}{priority}{&5}{repeat}{&6}{cmd}{&7}{condition}{$condition}{locked}{0}{ready}{1}{enabled}{1}}};
+                #if {$index != 0} {
+                    #nop delete the existing entry and replace it;
+                    #list {combat_que} {delete} {$index}
+                };
 
+                #list {combat_que} {add} {{{name}{$cdname}{rating}{&3}{when}{&4}{priority}{&5}{repeat}{&6}{cmd}{&7}{condition}{$condition}{locked}{0}{ready}{1}{enabled}{1}}};
                 #echo {<028>Combat que '$cdname' added.<088>}
             } {
                 #echo {<028>Syntax is:\ncq add name/rating/when/priority/repeat/command/condition<088>}
@@ -202,87 +194,28 @@
                 #list {combat_que} {reverse};
 
                 #foreach {*combat_que[]} {index} {      
-                    #variable {exec} {};
-                    #variable {exec_result} {0};
-
-                    #if {$combat_que[$index][ready] == 1 && $combat_que[$index][enabled] == 1} {
-                        #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] ready}};
-        
-                        #if {$combat_que[$index][locked] == 1} {
+                    #if {$combat_que[$index][enabled] == 1} {
+                        #if {@check_ready{$index} == 0} {
+                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not ready}};
+                            #continue
+                        };
+                       #if {@check_locked{$index} == 0} {
                             #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: locked}};
                             #continue
                         };
-
-                        #if {$combat_que[$index][rating] >= 0} {
-                            #nop positive rating, so check que rating > area rating;
-                            #if {$combat_que[$index][rating] > $area_rating} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: que rating $combat_que[$index][rating] > area rating $area_rating }};
-                                #continue
-                            }
-                        } {
-                            #nop negative que rating, so check that -1 * (que rating) < $area rating;
-                            #if {$combat_que[$index][rating] + $area_rating > 0} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: que rating $combat_que[$index][rating] > area rating $area_rating }};
-                                #continue
-                            }
-                        };
-      
-                        #if {"$combat_que[$index][when]" == "start"} {
-                            #if {$mip[round] > 4 || $enemy[hp] < 50} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=start}};
-                                #continue
-                            }
-                        };
-                        #elseif {"$combat_que[$index][when]" == "low"} {
-                            #if {$enemy[hp] < 10} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=low}};
-                                #continue
-                            }
-                        };
-                        #elseif {"$combat_que[$index][when]" == "med"} {
-                            #if {$enemy[hp] < 50} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=med}};
-                                #continue
-                            }
-                        };
-                        #elseif {"$combat_que[$index][when]" == "high"} {
-                            #if {$enemy[hp] < 80} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=high}};
-                                #continue
-                            }
-                        };
-                        #elseif {"$combat_que[$index][when]" == "end"} {
-                            #if {$enemy[hp] >= 5} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=end}};
-                                #continue
-                            }
-                        };
-                        #elseif {"$combat_que[$index][when]" == "any"} {
-                            #nop no restrictions
-                        };
-                        #else {
-                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when=unknown/invalid}};
+                        #if {@check_rating{$index} == 0} {
+                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: rating: $combat_que[$index][rating] vs $area_rating}};
                             #continue
-                        };
-        
-                        #if {$combat_que[$index][repeat] == 1 && $combat_que[$index][locked] == 1} {
-                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: repeat: locked}};
+                        };      
+                        #if {@check_when{$index} == 0} {
+                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when: $combat_que[$index][when]locked}};
                             #continue
-                        };
-
-                        #if {"$combat_que[$index][condition]" != ""} {
-                            #if {$cq_debug} {#echo {CQ: Checking condition "$exec"}};
-                            #if {@can_execute_index{$index} == 0} {
-                                #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: condition not met}};
-                                #continue
-                            }                       
-                        };
-                        
-                        #nop passed all conditions, execute!;
-                        #if {$combat_que[$index][repeat] == 0} {
-                            #variable {combat_que[$index][locked]} {1}
-                        };
-        
+                        };        
+                        #if {@check_condition{$index} == 0} {
+                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: condition not met}};
+                            #continue
+                        };                        
+                        #nop passed all conditions, execute!;       
                         #if {$cq_debug} {#echo {CQ: Executing $combat_que[$index][name], cmd: $combat_que[$index][cmd]}};
                         @execute_index{$index}
                     }
@@ -307,24 +240,6 @@
     }
 }
 
-#function {can_execute_name}
-{
-    #local {index} {@get_index{%1}};
-    #if {$index > 0} {
-        #variable {result} {@can_execute_index{$index}}
-    } {
-        #variable {result} {0}
-    }
-}
-
-#function {can_execute_index}
-{
-    #variable {exec} {#if {$combat_que[%1][condition]} {#variable result 1} {#variable result 0}};
-    #replace {exec} {$:} {$};
-    #replace {exec} {'} {"};
-    $exec;
-}
-
 #function {execute_name}
 {
     #local {index} {@get_index{%1}};
@@ -335,10 +250,118 @@
 
 #function {execute_index}
 {
+    #if {$combat_que[%1][repeat] == 0} {
+        #variable {combat_que[%1][locked]} {1}
+    };
     #variable {exec} {$combat_que[%1][cmd]};
     #replace {exec} {'} {"};
     #replace {exec} {$:} {$};
     #variable {result} {$exec}
+}
+
+#function {check_enabled}
+{
+    #variable {result} {$combat_que[%1][enabled]}
+}
+
+#function {check_ready}
+{
+    #variable {result} {$combat_que[%1][ready]}
+}
+
+#function {check_locked}
+{
+    #if {$combat_que[%1][locked] == 1} {
+        #variable {result} {0}
+    } {
+        #variable {result} {1}
+    }
+}
+
+#function {check_rating}
+{
+    #variable {result} {0};
+
+    #if {$combat_que[%1][rating] >= 0} {
+        #nop positive rating, so check que rating > area rating;
+        #if {$combat_que[%1][rating] <= $area_rating} {
+            #variable {result} {1}
+        }
+    } {
+        #nop negative que rating, so check that -1 * (que rating) < $area rating;
+        #if {$combat_que[%1][rating] + $area_rating <= 0} {
+            #variable {result} {1};
+        }
+    }
+}
+
+#function {check_when}
+{
+    #variable {result} {0};
+
+    #switch {"$combat_que[%1][when]"} {
+        #case "start" {
+            #if {$mip[round] < 5 && $enemy[hp] >= 75} {
+                #variable {result} {1}
+            }
+        };
+        #case "low" {
+            #if {$enemy[hp] >= 10} {
+                #variable {result} {1}
+            }
+        };
+        #case "med" {
+            #if {$enemy[hp] >= 50} {
+                #variable {result} {1}
+            }
+        };
+        #case "high" {
+            #if {$enemy[hp] >= 80} {
+                #variable {result} {1}
+            }
+        };
+        #case "end" {
+            #if {$enemy[hp] <= 5} {
+                #variable {result} {1}
+            }
+        };
+        #case "any" {
+            #variable {result} {1}
+        };
+        #default {
+            #variable {result} {0}
+        }
+    }
+}
+
+#function {check_condition}
+{
+    #if {"$combat_que[%1][condition]" == ""} {
+        #variable {result} {1}
+    } {
+        #variable {exec} {#if {$combat_que[%1][condition]} {#variable result 1} {#variable result 0}};
+        #replace {exec} {$:} {$};
+        #replace {exec} {'} {"};
+        $exec;
+    }
+}
+
+#function {check_colour}
+{
+    #if {%1 == 0} {
+		#variable {result} {<218>}
+	} {
+        #variable {result} {<228>}
+    }
+}
+
+#function {hmonoff}
+{
+	#if {%1 == 1} {
+		#variable {result} {<aea>ON<088>}
+	} {
+		#variable {result} {<eaa>OFF<088>}
+	}
 }
 
 #alias {update_cooldown %1 %d}
