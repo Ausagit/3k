@@ -65,11 +65,11 @@
 #alias {cq_example}
 {
     cq clear;
-    cq add ewell/7/start/999/0/(energy well;
+    cq add ewell/7/start/500/0/(energy well;
     cq add owl/8/end/0/0/touch owl rune;
     cq add raven/9/start/0/0/touch raven rune;
-    cq add heal/1/any/0/1/(heal $:ses_name/$:my[hp][current] < 1000;
-    cq add heal2/5/any/0/1/hmheal/@:health_check{1000};
+    cq add heal/1/any/999/1/(heal $:ses_name/$:my[hp][current] < 1000;
+    cq add hmheal/5/any/900/1/hmheal/@:health_check{1000};
     rate 8;
     cq on
 }
@@ -583,6 +583,12 @@
 {
     update_cooldown fry 0;
     #delay {cq_fry} {update_cooldown fry 1} {3960}
+}
+
+#action {^You call forth high mortal energies to heal yourself!}
+{
+    update_cooldown hmheal 0;
+    #delay {cq_hmheal} {update_cooldown hmheal 1} {3600}
 }
 
 #class {combat_que} {close}
