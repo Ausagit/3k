@@ -5,6 +5,17 @@
         Add some cue items, 'cq add name/rating/when/priority/repeat/cmd/condition'
         Start the que, 'cq on'.
         Manage the [ready] status by calling update_cooldown <name> <0/1> from actions, like the rod runes at the end of this file.
+
+    Commands:
+        cq                  - show the list
+        cq ready            - show the list (ready-only lines)
+        cq on               - enable the que
+        cq off              - disable the que
+        cq disable <name>   - disable the specified que item
+        cq enable <name>    - enable the specified que item
+        cq add <args>       - add a que item, args are mandatory, except for condition
+                              <name>/<rating>/<when>/<priority>/<repeat>/<cmd>/<condition>
+        cq remove <name>    - remove the specified que item
     
     Injecting script:
         You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below.
@@ -18,8 +29,8 @@
         cmd       - the command to send to the mud, can include some scripting elements
         condition - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "        
         ready     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
-        locked    - flag to lock the ability after the first use if it's non-repeatable, reset on kill
         enabled   - flag to enable/disable the comabt que item manually
+	locked    - managed internally, flag to lock the ability after the first use if it's non-repeatable, reset on kill
 
     <when> options:
         start: rounds < 5, health >= 90%
@@ -65,33 +76,7 @@
 {
     #switch {"%1"} {
         #case "" {
-            #local {cuelist} {};
-            #format {cuelist} {<128> COMBAT QUE                                          SORT:<028>%-8s <088><128>EN:%s <128>AR:<028>%s<088>} {$sort_by} {@hmonoff{$combat_que_on}} {$area_rating} {$cuelist};
-            #format {cuelist} {%s\n<028>==============================================================================<088>} {$cuelist};
-            #format {cuelist} {%s\n<128> %-12s %-3s %-5s %-3s %-3s %-3s %-3s %-20s %s<088>} {$cuelist} {Name} {Rtg} {When} {Pri} {Rep} {Rdy} {Lck} {Command} {Condition};
-            #format {cuelist} {%s\n<028>------------------------------------------------------------------------------<088>} {$cuelist};
-            #if {&{combat_que[]} == 0} {
-                #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
-            } {
-                #list {combat_que} {indexate} {$sort_by};
-                #list {combat_que} {order};
-                #if {"$sort_by" == "priority"} {
-                    #list {combat_que} {reverse}
-                };
-                #foreach {*combat_que[]} {index} {
-                    #format {cuelist} {%s\n %s%-12s<088> %s%-3d<088> %s%-5s<088> %-3d %-3d %s%-3d<088> %s%-3d<088> %-20s %s%s<088>} {$cuelist}
-                        {@check_colour{@check_enabled{$index}}} {$combat_que[$index][name]}
-                        {@check_colour{@check_rating{$index}}} {$combat_que[$index][rating]}
-                        {@check_colour{@check_when{$index}}} {$combat_que[$index][when]}
-                        {$combat_que[$index][priority]}
-                        {$combat_que[$index][repeat]}
-                        {@check_colour{@check_ready{$index}}} {$combat_que[$index][ready]}
-                        {@check_colour{@check_locked{$index}}} {$combat_que[$index][locked]}
-                        {$combat_que[$index][cmd]}
-                        {@check_colour{@check_condition{$index}}} {$combat_que[$index][condition]};
-                }
-            };
-            #echo {$cuelist<088>}
+            _showcombatque;
         };
         #case "add" {
             #regexp {%0} {{add ([a-zA-z0-9_]{1,12})\/(-?[0-9])\/(start|end|high|med|low|any)\/([0-9]{1,3})\/([0-9])\/([a-zA-Z0-9_\$\:='@\( ]+)(?:\/)?(.*)?}} {
@@ -99,7 +84,7 @@
                 #nop cq add   %2     %3       %4      %5         %6     %7       &8;
 
                 #nop some housekeeping;
-                #local {cdname} {};                
+                #local {cdname} {};
                 #format {cdname} {%l} {&2};
                 #local {index} {@get_index{$cdname}};
                 #local {condition} {&8};
@@ -143,7 +128,7 @@
             #echo {<028>Combat que disabled.<088>}
         };
         #case "sort" {
-            #regexp {%0} {{sort (name|rating|when|ready|priority)}} {
+            #regexp {%0} {{sort (name|rating|when|ready|priority|command|condition|locked)}} {
                 #variable {sort_by} {&2};
                 cq
             } {
@@ -186,6 +171,9 @@
         #case "help" {
             #echo {<028>Coming soon...<088>}
         };
+        #case "ready" {
+            _showcombatque ready;
+        };
         #case "run" {
             #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
             {
@@ -226,6 +214,55 @@
             #echo {<028>Unknown command, use cq [add/remove/run/clear/debug/refresh/enable/disable]<088>}
         }
     }
+}
+
+#function {sort_colour}
+{
+    #if {"%1" == "$sort_by"} {
+        #variable {result} {<488><128>}
+    } {
+        #variable {result} {<128>}
+    }
+}
+
+#alias {_showcombatque}
+{
+    #local {cuelist} {};
+    #format {cuelist} {<128> COMBAT QUE                                                           <088>%sEN<088> <128>AR:<028>%s<088>} {@check_colour{$combat_que_on}} {$area_rating} {$cuelist};
+    #format {cuelist} {%s\n<028>==============================================================================<088>} {$cuelist};
+    #format {cuelist} {%s\n<128> %sName<088>         %sRtg<088> %sWhen<088>  %sPri<088> %sRep<088> %sRdy<088> %sLck<088> %sCommand<088>              %sCondition<088><088>} {$cuelist}
+        {@sort_colour{name}} {@sort_colour{rating}} {@sort_colour{when}} {@sort_colour{priority}} {@sort_colour{repeat}} {@sort_colour{ready}}
+        {@sort_colour{locked}} {@sort_colour{command}} {@sort_colour{condition}};
+    #format {cuelist} {%s\n<028>------------------------------------------------------------------------------<088>} {$cuelist};
+
+    #if {&{combat_que[]} == 0} {
+        #format {cuelist} {%s\n You have no configured combat que items} {$cuelist}
+    } {
+        #list {combat_que} {indexate} {$sort_by};
+        #list {combat_que} {order};
+        #if {"$sort_by" == "priority"} {
+            #list {combat_que} {reverse}
+        };
+        #foreach {*combat_que[]} {index} {
+            #local {showelement} {1};
+            #if {"%1" == "ready" && ($combat_que[$index][ready] == 0 || @check_rating{$index} == 0)} {
+                #local {showelement} {0}
+            };
+            #if {$showelement} {
+                #format {cuelist} {%s\n %s%-12s<088> %s%-3d<088> %s%-5s<088> %-3d %-3d %s%-3d<088> %s%-3d<088> %-20s %s%s<088>} {$cuelist}
+                    {@check_colour{@check_enabled{$index}}} {$combat_que[$index][name]}
+                    {@check_colour{@check_rating{$index}}} {$combat_que[$index][rating]}
+                    {@check_colour{@check_when{$index}}} {$combat_que[$index][when]}
+                    {$combat_que[$index][priority]}
+                    {$combat_que[$index][repeat]}
+                    {@check_colour{@check_ready{$index}}} {$combat_que[$index][ready]}
+                    {@check_colour{@check_locked{$index}}} {$combat_que[$index][locked]}
+                    {$combat_que[$index][cmd]}
+                    {@check_colour{@check_condition{$index}}} {$combat_que[$index][condition]};
+            }
+        }
+    };
+    #echo {$cuelist<088>}
 }
 
 #function {get_index}
@@ -348,28 +385,18 @@
 
 #function {check_colour}
 {
-    #if {%1 == 0} {
-		#variable {result} {<218>}
+    #if {%1 == 1 || "%1" == "ON"} {
+		#variable {result} {<228>}
 	} {
-        #variable {result} {<228>}
+        #variable {result} {<218>}
     }
-}
-
-#function {hmonoff}
-{
-	#if {%1 == 1} {
-		#variable {result} {<aea>ON<088>}
-	} {
-		#variable {result} {<eaa>OFF<088>}
-	}
 }
 
 #alias {update_cooldown %1 %d}
 {
     #local {index} {@get_index{%1}};
-    #local {cdstatus} {%2};
     #if {$index > 0} {
-        #if {$cdstatus == 0} {
+        #if {%2 == 0} {
             #nop abilitiy has been used;
             #variable {combat_que[$index][ready]} {0};
             #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] coodown: $combat_que[$index][ready]}};
@@ -517,32 +544,32 @@
 #action {^A shimmering sphere of energy engulfs you}
 {
     update_cooldown protection 0;
-    #delay {protection} {update_cooldown protection 1} {9720}
+    #delay {cq_protection} {update_cooldown protection 1} {9720}
 }
 
 #action {^You tear apart %* defenses!}
 {
     update_cooldown shred 0;
-    #delay {shred} {update_cooldown shred 1} {540}
+    #delay {cq_shred} {update_cooldown shred 1} {540}
 }
 
 #action {^You bathe %* in the healing powers of the outer planes}
 {
     update_cooldown heal 0;
-    #delay {heal} {update_cooldown heal 1} {600}
+    #delay {cq_heal} {update_cooldown heal 1} {600}
 }
 
 #action {^You invoke the powers of life and death to surround and protect you}
 {
     update_cooldown immortality 0;
     #nop in case of a complete nolifer;
-    #delay {immortality} {update_cooldown immortality 1} {267840}
+    #delay {cq_immortality} {update_cooldown immortality 1} {267840}
 }
 
 #action {^Energy flashes down from the sky, frying}
 {
     update_cooldown fry 0;
-    #delay {fry} {update_cooldown fry 1} {3960}
+    #delay {cq_fry} {update_cooldown fry 1} {3960}
 }
 
 #class {combat_que} {close}
