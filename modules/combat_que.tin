@@ -11,6 +11,7 @@
         cq ready            - show the list (ready-only lines)
         cq on               - enable the que
         cq off              - disable the que
+	cq sort <column>    - sorts the list by the specified column (name|rating|when|ready|priority|command|condition|locked)
         cq disable <name>   - disable the specified que item
         cq enable <name>    - enable the specified que item
         cq add <args>       - add a que item, args are mandatory, except for condition
