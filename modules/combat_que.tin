@@ -11,7 +11,7 @@
         cq ready            - show the list (ready-only lines)
         cq on               - enable the que
         cq off              - disable the que
-	cq sort <column>    - sorts the list by the specified column (name|rating|when|ready|priority|command|condition|locked)
+        cq sort <column>    - sorts the list by the specified column (name|rating|when|ready|priority|command|condition|locked)
         cq disable <name>   - disable the specified que item
         cq enable <name>    - enable the specified que item
         cq add <args>       - add a que item, args are mandatory, except for condition
@@ -31,7 +31,7 @@
         condition - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "        
         ready     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
         enabled   - flag to enable/disable the comabt que item manually
-	locked    - managed internally, flag to lock the ability after the first use if it's non-repeatable, reset on kill
+        locked    - managed internall, flag to lock the ability after the first use if it's non-repeatable, reset on kill
 
     <when> options:
         start: rounds < 5, health >= 90%
@@ -69,8 +69,18 @@
     cq add owl/8/end/0/0/touch owl rune;
     cq add raven/9/start/0/0/touch raven rune;
     cq add heal/1/any/0/1/(heal $:ses_name/$:my[hp][current] < 1000;
+    cq add heal2/5/any/0/1/hmheal/@:health_check{1000};
     rate 8;
     cq on
+}
+
+#function {health_check}
+{
+    #if {$my[hp][current] < %1} {
+        #variable {result} {1}
+    } {
+        #variable {result} {0}
+    }
 }
 
 #alias {cq}
@@ -294,6 +304,7 @@
     #variable {exec} {$combat_que[%1][cmd]};
     #replace {exec} {'} {"};
     #replace {exec} {$:} {$};
+    #replace {exec} {@:} {@};
     #variable {result} {$exec}
 }
 
@@ -379,6 +390,7 @@
     } {
         #variable {exec} {#if {$combat_que[%1][condition]} {#variable result 1} {#variable result 0}};
         #replace {exec} {$:} {$};
+        #replace {exec} {@:} {@};
         #replace {exec} {'} {"};
         $exec;
     }
