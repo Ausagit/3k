@@ -28,17 +28,31 @@
 	mask debug		- toggles debug mode for tracking issues
 	mu [sel_qty]	- reclaim a single, or multiple corpses
 
-	Example code for update_status (or hp trigger, etc).
+	Tip:
+	Add the following line to the start of update_status.
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
+
+	Example code:
+	Use in update_status or hp trigger, etc. Adjust values to suit your circumstance.
 	Note that update_status may fire several times in a round.
-	#if {($recently_reclaimed == 0) && ($enemy[hp] > 1) && ($my[gp1][perc] < 40)} {
-		#if {$mask_module} {
-			#delay {reclaim} {mu} {0.1}
-		} {
-			#delay {reclaim} {
-				#nop do your basic guild corpse commands;
-			} {0.1}
+	
+		#nop disregard 0 GP1 as it is most likely a mip bug;
+		#if {($my[gp1][perc] < 50) && ($enemy[hp] > 5) && ($my[gp1][current] > 0)} {
+			#if {$recently_reclaimed == 0} {
+				#if {$my[gp1][perc] <= 10} {
+					#delay {reclaim} {mu 5} {0.1}
+				};#elseif {$my[gp1][perc] <= 20} {
+					#delay {reclaim} {mu 4} {0.1}
+				};#elseif {$my[gp1][perc] <= 30} {
+					#delay {reclaim} {mu 3} {0.1}
+				};#elseif {$my[gp1][perc] <= 40} {
+					#delay {reclaim} {mu 2} {0.1}
+				};#else {
+					#delay {reclaim} {mu 1} {0.1}
+				}
+			}
 		}
-	};
+
 */
 #class {mask} {kill}
 #class {mask} {open}
