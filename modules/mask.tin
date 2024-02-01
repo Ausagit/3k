@@ -54,6 +54,14 @@
 		}
 
 */
+
+#nop housekeeping
+#if {"$corpses[inventory]" == ""} {#variable {corpses[inventory]} {0}}
+#if {"$corpses[coffin]" == ""} {#variable {corpses[coffin]} {0}}
+#if {"$corpses[freezer]" == ""} {#variable {corpses[freezer]} {0}}
+#if {"$corpses[cooler]" == ""} {#variable {corpses[cooler]} {0}}
+#if {"$corpses[follower]" == ""} {#variable {corpses[follower]} {0}}
+
 #class {mask} {kill}
 #class {mask} {open}
 
