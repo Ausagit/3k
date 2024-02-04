@@ -33,7 +33,7 @@
 		#variable {onkill_os} {0};
 		#echo {<fca>Onkill cleared.<088>}
 	}; #else {
-        #variable {onkill} {%0};
+        #variable onkill %0;
 		#variable {onkill_os} {0};
 		#echo {<fca>Onkill set to %s.<088>} {$onkill}
 	}
@@ -55,7 +55,7 @@
 		#variable {onkill_os} {0};
 		#echo {<fca>Onkill cleared.<088>}		
 	}; #else {
-        #variable {onkill} {%0};
+        #variable onkill %0;
         #variable {onkill_os} {1};
         #echo {<fca>Onkill oneshot is set to %s.<088>} {$onkill}
     }
@@ -64,7 +64,11 @@
 #alias {onkillrun}
 {
     #if {"$onkill" != ""} {
-        $onkill;
+		#local {exec} {$onkill};
+    	#replace {exec} {'} {"};
+    	#replace {exec} {$:} {$};
+    	#replace {exec} {@:} {@};
+        $exec;
         #if {$onkill_os} {
             #variable {onkill} {};
             #variable {onkill_os} {0}
