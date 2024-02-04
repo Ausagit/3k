@@ -72,6 +72,20 @@
 #variable {mask_glyph_state} {unknown}
 #variable {mask_debugging} {0}
 
+
+#alias {on_mask_activated}
+{
+	#nop define these aliases in your guild file with {1} priority to fire just before corpses are unwrapped
+}
+#alias {on_mask_reclaimed}
+{
+	#nop define these aliases in your guild file with {1} priority to fire just after corpses are reclaimed
+}
+#alias {on_mask_completed}
+{
+	#nop define these aliases in your guild file with {1} priority to fire when the entire process is complete
+}
+
 #alias {mask}
 {
     #switch {"%1"} {
@@ -131,6 +145,7 @@
 		#echo {<ecf>You must wait before reclaiming again.<088>}
 	} {
 		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower] > 0} {
+			on_mask_activated;
 			_select_corpse %1
 		}
 	}
@@ -206,7 +221,8 @@
 	#if {$cleanup_qty > 0} {
 		_guild_reclaim $cleanup_qty
 	};
-	#delay {finish_reclaim} {_finish_reclaim} {3}
+	#delay {finish_reclaim} {_finish_reclaim} {3};
+	on_mask_reclaimed
 }
 
 #alias {_finish_reclaim}
@@ -216,6 +232,7 @@
 	#variable {recently_reclaimed} {0};
 	#variable {mask_check} {0};
 	_mask_debug MASK: finished reclaim;
+	on_mask_completed
 }
 
 #alias {_select_corpse}
@@ -337,7 +354,8 @@
 		#delay {cleanup_reclaim} {_cleanup_reclaim} {3}
 	} {
 		#nop no corpses waiting for mask cloning so finish up;
-		#delay {finish_reclaim} {_finish_reclaim} {3}
+		#delay {finish_reclaim} {_finish_reclaim} {3};
+		on_mask_reclaimed
 	}
 }
 
