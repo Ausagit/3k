@@ -91,7 +91,7 @@
 	#read {.tt/3k/modules/dungeonreport.tin}
 }
 
-#action {^[PARTY] %1: {(w|W)here are we?}}
+#action {^[PARTY] %1: {(w|W)here are we\?}}
 {
 	#if {$bot == 1} {
 		#send !ptell We are in $bots[stepper], room #$roomvnum, step $path_pos/$path_len. My target is at $enemy[hp]% health.
