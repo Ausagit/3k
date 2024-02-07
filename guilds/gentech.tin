@@ -714,5 +714,36 @@
 
 	#line ignore #showme {HP:${my[hp][graph]}  SP:${my[sp][graph]} PU:${my[gp1][graph]}        E:${enemy[graph]} R:$roundcount <088>CC:$corpsestatus} {-3};
 }
+
+#alias {.mipProcessGlineGentech} {
+	#if {%1 == 1} {
+		#regex {$mip[gline][1]} {CPC:<%d>%d<099>/%d G2N:%d(%d\%) RC[%d] Reset(<%d>%d\%<099>) TS:%d/%d E-TS:%d} {
+			#VAR {gentech[cpc][current]}{&2};
+			#VAR {gentech[cpc][max]}	{&3};
+			#VAR {gentech[gxp][tnl]}	{&4};
+			#VAR {gentech[gxp][per]}	{&5};
+			#VAR {gentech[rc][num]}		{&6};
+			#VAR {gentech[reset]}		{&8};
+			#VAR {gentech[ts][current]}	{&9};
+			#VAR {gentech[ts][max]}		{&10};
+			#VAR {gentech[ets]}			{&11}
+		};
+		#replace {mip[gline][1]} {Reset} {R}
+	}; #elseif {%1 == 2} {
+		#regex {$mip[gline][2]} {Bias[<%d>%w<%d>] Atk(<%d>%d\%<%d>) Def(<%d>%d\%<%d>) <%d>Efield<%d>(<%d>%d%D<%d>) Edna(<%d>%d%D<%d>) Illum(<%d>%w<%d>)} {
+			#VAR {gentech[bias][mode]}	{&2};
+			#VAR {gentech[bias][atk]}	{&5};
+			#VAR {gentech[bias][def]}	{&8};
+			#VAR {gentech[efield][num]}	{&13};
+			#VAR {gentech[efield][unit]}{&14};
+			#VAR {gentech[edna][num]}	{&17};
+			#VAR {gentech[edna][unit]}	{&18};
+			#VAR {gentech[illum]}		{&21};
+		}
+	}; #else {
+		#echo {<171> Invalid Gline Number <088>}
+	}
+} {1}
                                                         
 #class {gentech} {close}
+
