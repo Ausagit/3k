@@ -86,7 +86,7 @@
 #action {{Z|z} {R|r}eset} {#bell}
 
 
-#action {^[PARTY] %1: {(d|D)ungeons?}}
+#action {^[PARTY] %1: {(d|D)ungeons\?}}
 {
 	#read {.tt/3k/modules/dungeonreport.tin}
 }
