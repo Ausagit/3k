@@ -26,7 +26,7 @@
 	mask off		- Default, reclaim instantly.
 	mask			- Show the mask and glyph status
 	mask debug		- toggles debug mode for tracking issues
-	mu [sel_qty]	- reclaim a single, or multiple corpses
+	mu [qty]		- reclaim a single, or multiple corpses
 
 	Tip:
 	Add the following line to the start of update_status.
@@ -34,25 +34,24 @@
 
 	Example code:
 	Use in update_status or hp trigger, etc. Adjust values to suit your circumstance.
-	Note that update_status may fire several times in a round.
+	Note that update_status may fire several times in a round, and mip data is not reliable.
+	Consider using data from hp bar captures instead.
 	
-		#nop disregard 0 GP1 as it is most likely a mip bug;
-		#if {($my[gp1][perc] < 50) && ($enemy[hp] > 5) && ($my[gp1][current] > 0)} {
-			#if {$recently_reclaimed == 0} {
-				#if {$my[gp1][perc] <= 10} {
-					#delay {reclaim} {mu 5} {0.1}
-				};#elseif {$my[gp1][perc] <= 20} {
-					#delay {reclaim} {mu 4} {0.1}
-				};#elseif {$my[gp1][perc] <= 30} {
-					#delay {reclaim} {mu 3} {0.1}
-				};#elseif {$my[gp1][perc] <= 40} {
-					#delay {reclaim} {mu 2} {0.1}
-				};#else {
-					#delay {reclaim} {mu 1} {0.1}
-				}
+	#if {($my[gp1][perc] < 50) && $enemy[hp] > 5} {
+		#if {$recently_reclaimed == 0} {
+			#if {$my[gp1][perc] <= 10} {
+				#delay {reclaim} {mu 5} {0.1}
+			};#elseif {$my[gp1][perc] <= 20} {
+				#delay {reclaim} {mu 4} {0.1}
+			};#elseif {$my[gp1][perc] <= 30} {
+				#delay {reclaim} {mu 3} {0.1}
+			};#elseif {$my[gp1][perc] <= 40} {
+				#delay {reclaim} {mu 2} {0.1}
+			};#else {
+				#delay {reclaim} {mu 1} {0.1}
 			}
 		}
-
+	}
 */
 
 #nop housekeeping
@@ -75,16 +74,16 @@
 
 #alias {on_mask_activated}
 {
-	#nop define these aliases in your guild file with {1} priority to fire just before corpses are unwrapped
-}
+	#nop define these aliases in your guild file to fire just before corpses are unwrapped
+} {9}
 #alias {on_mask_reclaimed}
 {
-	#nop define these aliases in your guild file with {1} priority to fire just after corpses are reclaimed
-}
+	#nop define these aliases in your guild file to fire just after corpses are reclaimed
+} {9}
 #alias {on_mask_completed}
 {
-	#nop define these aliases in your guild file with {1} priority to fire when the entire process is complete
-}
+	#nop define these aliases in your guild file to fire when the entire process is complete
+} {9}
 
 #alias {mask}
 {
@@ -190,7 +189,7 @@
 	#format {lname} {%l} {%1};
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#nop reclaim the two corpses and reduce the cleanup tracking by one;
-		_guild_reclaim 2;
+		guild_reclaim 2;
 		#math {cleanup_qty} {$cleanup_qty - 1};
 		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
 	} {
@@ -204,7 +203,7 @@
 	#format {lname} {%l} {%1};
 	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
 		#nop reclaim the single corpses and reduce the cleanup tracking by one;
-		_guild_reclaim 1;
+		guild_reclaim 1;
 		#math {cleanup_qty} {$cleanup_qty - 1};
 		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
 	} {
@@ -219,7 +218,7 @@
 	#if {$mask_on == 1} {#send !trace glyph};
 	_mask_debug MASK: cleanup_reclaim $cleanup_qty;
 	#if {$cleanup_qty > 0} {
-		_guild_reclaim $cleanup_qty
+		guild_reclaim $cleanup_qty
 	};
 	#delay {finish_reclaim} {_finish_reclaim} {3};
 	on_mask_reclaimed
@@ -246,36 +245,13 @@
 
 	_mask_debug MASK: select_corpse $sel_qty;
 
-	#nop coffin corpses can be fresh or preserved so should wait for the mask to clone;
-	#if {$sel_qty > 0 && $corpses[coffin] > 0} {
-		#if {$corpses[coffin] >= $sel_qty} {
-			_mask_debug MASK: selecting coffin $sel_qty;
-			#$sel_qty {#send !unwrap};
-			#if {$mask_on == 0} {
-				_guild_reclaim $sel_qty
-			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
-			};
-			#local {sel_qty} {0}
-		} {
-			_mask_debug MASK: selecting coffin $corpses[coffin];
-			#$corpses[coffin] {#send !unwrap};
-			#if {$mask_on == 0} {
-				_guild_reclaim $corpses[coffin]
-			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $corpses[coffin]}
-			};
-			#math {sel_qty} {$sel_qty - $corpses[coffin]}
-		}
-	};
-
 	#nop freezer corpses are always fresh and wait for the mask to clone;
 	#if {$sel_qty > 0 && $corpses[freezer] > 0} {
 		#if {$corpses[freezer] >= $sel_qty} {
 			_mask_debug MASK: selecting freezer $sel_qty;
 			#$sel_qty {#send !deslab};
 			#if {$mask_on == 0} {
-				_guild_reclaim $sel_qty
+				guild_reclaim $sel_qty
 			} {
 				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
 			};
@@ -284,7 +260,7 @@
 			_mask_debug MASK: selecting freezer $corpses[freezer];
 			#$corpses[freezer] {#send !deslab};
 			#if {$mask_on == 0} {
-				_guild_reclaim $corpses[freezer]
+				guild_reclaim $corpses[freezer]
 			} {
 				#math {unwrapped_qty} {$unwrapped_qty + $corpses[freezer]}
 			};
@@ -298,7 +274,7 @@
 			_mask_debug MASK: selecting cooler $sel_qty;
 			#$sel_qty {#send !uncooler corpse};
 			#if {$mask_on == 0} {
-				_guild_reclaim $sel_qty
+				guild_reclaim $sel_qty
 			} {
 				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
 			};
@@ -307,11 +283,34 @@
 			_mask_debug MASK: selecting cooler $corpses[cooler];
 			#$corpses[cooler] {#send !uncooler corpse};
 			#if {$mask_on == 0} {
-				_guild_reclaim $corpses[cooler]
+				guild_reclaim $corpses[cooler]
 			} {
 				#math {unwrapped_qty} {$unwrapped_qty + $corpses[cooler]}
 			};
 			#math {sel_qty} {$sel_qty - $corpses[cooler]}
+		}
+	};
+
+	#nop coffin corpses can be fresh or preserved so should wait for the mask to clone;
+	#if {$sel_qty > 0 && $corpses[coffin] > 0} {
+		#if {$corpses[coffin] >= $sel_qty} {
+			_mask_debug MASK: selecting coffin $sel_qty;
+			#$sel_qty {#send !unwrap};
+			#if {$mask_on == 0} {
+				guild_reclaim $sel_qty
+			} {
+				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
+			};
+			#local {sel_qty} {0}
+		} {
+			_mask_debug MASK: selecting coffin $corpses[coffin];
+			#$corpses[coffin] {#send !unwrap};
+			#if {$mask_on == 0} {
+				guild_reclaim $corpses[coffin]
+			} {
+				#math {unwrapped_qty} {$unwrapped_qty + $corpses[coffin]}
+			};
+			#math {sel_qty} {$sel_qty - $corpses[coffin]}
 		}
 	};
 
@@ -320,12 +319,12 @@
 		#if {$corpses[follower] >= $sel_qty} {
 			_mask_debug MASK: selecting follower $sel_qty;
 			#$sel_qty {#send !=drop corpse};
-			_guild_reclaim $sel_qty;
+			guild_reclaim $sel_qty;
 			#local {sel_qty} {0}
 		} {
 			_mask_debug MASK: selecting follower $corpses[follower];
 			#$corpses[follower] {#send !=drop corpse};
-			_guild_reclaim $corpses[follower];
+			guild_reclaim $corpses[follower];
 			#math {sel_qty} {$sel_qty - $corpses[follower]}
 		}
 	};
@@ -335,12 +334,12 @@
 		#if {$corpses[inventory] >= $sel_qty} {
 			_mask_debug MASK: selecting inventory $sel_qty;
 			#$sel_qty {#send !drop corpse};
-			_guild_reclaim $sel_qty;
+			guild_reclaim $sel_qty;
 			#local {sel_qty} {0}
 		} {
 			_mask_debug MASK: selecting inventory $corpses[inventory];
 			#$corpses[inventory] {#send !drop corpse};
-			_guild_reclaim $corpses[inventory];
+			guild_reclaim $corpses[inventory];
 			#math {sel_qty} {$sel_qty - $corpses[inventory]}
 		}
 	};
@@ -359,7 +358,7 @@
 	}
 }
 
-#alias {_guild_reclaim}
+#alias {guild_reclaim}
 {
 	#local {sel_qty} {0};
 	#if {"%1" != ""} {#math {sel_qty} {%1 * 1}};
