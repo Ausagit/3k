@@ -3,7 +3,8 @@
     Usage:
         Add 'cq reset' to corpsetrig to remove the locked status on each kill
         Add some cue items, 'cq add name/rating/when/priority/repeat/cmd/condition'
-        Start the que, 'cq on'.
+        Toggle manual mode on and off with 'cq manual'
+        Enable the que, 'cq on'.
         Manage the [ready] status by calling update_cooldown <name> <0/1> from actions, like the rod runes at the end of this file.
 
     Commands:
@@ -11,6 +12,7 @@
         cq ready            - show the list (ready-only lines)
         cq on               - enable the que
         cq off              - disable the que
+        cq manual           - by default que runs from a ticker, this toggles the que to run manually, e.g. 'cq run' from a trigger
         cq sort <column>    - sorts the list by the specified column (name|rating|when|ready|priority|command|condition|locked)
         cq disable <name>   - disable the specified que item
         cq enable <name>    - enable the specified que item
@@ -51,13 +53,12 @@
 
 #variable {combat_que} {}
 #variable {combat_que_on} {0}
+#variable {combat_que_manual} {0}
 #variable {cq_debug} {0}
 #variable {combat_que_module} {1}
 #variable {area_rating} {0}
 #variable {cq2} {}
 #variable {sort_by} {rating}
-
-#ticker {combat_que} {cq run} {1}
 
 #alias {cqload} {#read .tt/3k/modules/combat_que.tin}
 
@@ -129,6 +130,9 @@
         #case "on" {
             #if {&{combat_que[]} != 0} {
                 #variable {combat_que_on} {1};
+                #if {$combat_que_manual == 0} {
+                    #ticker {combat_que} {cq run} {1}
+                };
                 #echo {<028>Combat que enabled.<088>}
             } {
                 #echo {<028>Combat que cannot be enabled because it's empty.<088>}
@@ -136,7 +140,32 @@
         };
         #case "off" {
             #variable {combat_que_on} {0};
+            #unticker {combat_que};
             #echo {<028>Combat que disabled.<088>}
+        };
+        #case "manual" {
+            #nop toggle manual mode on/off;     
+            #if {"%2" == "on"} {
+                #variable {combat_que_manual} {1};
+                #unticker {combat_que};
+                #echo {<028>Combat que will now run manually, use 'cq run' to run it every round.<088>}
+            };
+            #elseif {"%2" == "off"} {
+                #variable {combat_que_manual} {0};
+                #ticker {combat_que} {cq run} {1};
+                #echo {<028>Combat que will now run automatically.<088>}        
+            };
+            #else {
+                #if {$combat_que_manual} {
+                    #variable {combat_que_manual} {0};
+                    #ticker {combat_que} {cq run} {1};
+                    #echo {<028>Combat que will now run automatically.<088>}
+                } {
+                    #variable {combat_que_manual} {1};
+                    #unticker {combat_que};
+                    #echo {<028>Combat que will now run manually, use 'cq run' to run it every round.<088>}
+                }
+            }
         };
         #case "sort" {
             #regexp {%0} {{sort (name|rating|when|ready|priority|command|condition|locked)}} {
