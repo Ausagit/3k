@@ -155,8 +155,6 @@ COMMANDS
 #alias {donateall} {donate all;#if {$backpack_module} {donatebpall}}
 #alias {sellall} {sell all;#if {$backpack_module} {sellbpall}}
 
-#read {.tt/3k/guilds/necromancer_custom.tin}
-
 #alias {ktrigsetup}
 {
 	#local {new_ktrig} {};
