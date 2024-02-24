@@ -1,0 +1,708 @@
+#nop necromancer.tin
+/*
+SETUP
+	Using cconfigure, configure gline1 and gline2 as below, it doesn't matter if you add extras or less to gline1,
+	however gline2 requires all the reagents for the stockall alias to work correctly.
+	gline1: worth, powers, protection, repower, circle, fused, follower
+	gline2: add all reagents
+	
+	HP Bar config, in exactly thhis order. You can add additional elements after #4 if you wish.
+		1 [Hit Points]
+  		2 [Necro Points/Corpses]
+  		3 [Memory] (drm)
+		4 [Undead Follower/Coffin]
+
+COMMANDS
+	cre/crd			- enable/disable automatic corpse runs (dropoffs to Duncan)
+	gre/grd			- enable/disable automatic guild runs (low dreams)
+	cte/ctd/ctp 	- corpse trigger, enable/disable/enable party
+	studyrun [arg]	- run to the guild to study, execute arg when done
+
+*/
+
+#nop required include for common functionality and modules
+#read {.tt/3k/guilds/guilds_common.tin}
+
+#class {necromancer} {kill}
+#class {necromancer} {open}
+
+#variable {guild} {necromancer}
+#variable {my[undead]} {0}
+#variable {path_len} {0}
+#variable {path_pos} {0}
+#variable {halting} {0}
+#variable {guildruns_on} {1}
+#variable {corpseruns_on} {0}
+#variable {scol} {<bbb>}
+#variable {laststatusbar} {}
+#variable {ktrig} {wrap/preserve get}
+
+#nop set your follower's name here
+#variable {follower_name} {deady}
+#nop set to your default invoke type
+#variable {invoke} {power}
+#nop set to 1 if you have an identified ring of light and ring of darkness in your inventory to train the rolm angel rune
+#variable {ringdark_on} {0}
+#nop set this to your coffin's capacity
+#variable {coffin_max} {21}
+#nop set this to 0 if you do not have ktrig
+#variable {ktrig_on} {1}
+#nop edit this table to set power study priority and quantities, ensure the numbering is consecuitive
+#variable {powerstudy}
+{
+	{1} {{name}{protection} {qty}{10}}
+	{2} {{name}{animate dead} {qty}{2}}
+	{3} {{name}{soulbind} {qty}{3}}
+	{4} {{name}{unholy ground} {qty}{5}}
+	{5} {{name}{rope trick} {qty}{2}}
+	{6} {{name}{shift} {qty}{5}}
+	{7} {{name}{will} {qty}{5}}
+	{8} {{name}{dispell} {qty}{5}}
+	{9} {{name}{turn undead} {qty}{5}}
+	{10} {{name}{daemon graft} {qty}{3}}
+	{11} {{name}{unholy armour} {qty}{3}}
+	{12} {{name}{create light} {qty}{3}}
+	{13} {{name}{spiritgrasp} {qty}{2}}
+	{14} {{name}{bloodarc} {qty}{15}}
+	{15} {{name}{corpsecion} {qty}{2}}
+	{16} {{name}{mirror} {qty}{2}}
+	{17} {{name}{nocturnum} {qty}{5}}
+	{18} {{name}{dream} {qty}{800}}
+}
+
+#gag {^HP[}
+
+#substitute {C:O=|======> } {}
+#substitute {C:D=##====<E } {}
+
+#highlight {^You prepare the corpse with magical energies and store it away.} {yellow}
+#highlight {^You prepare the corpse with your innate, necromantic energies.} {yellow}
+#highlight {^The corpse is already preserved, but grabbing it anyway.} {yellow}
+#highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
+
+#gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
+#gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
+#gag {^with your own.$}
+#gag {^The aegis rune on the PsiMace pulses for a moment.}
+
+#alias {a} {#send !absorb}
+#alias {aa} {#send !absorb prime}
+#alias {p} {#send !preserve}
+#alias {pg} {#send !preserve get}
+#alias {ug} {#send !unholy ground}
+#alias {sb} {#send !soulbind}
+#alias {barc} {#send !bloodarc $mobname}
+
+#alias {npr} {#send !nocturnum prime}
+#alias {dpr} {#send !diurnum prime}
+#alias {da} {#send !detect alignment}
+#alias {ng} {#send !necrogram}
+#alias {com} {#send !chat}
+#alias {comm} {#send !chat}
+#alias {tp} {#send !teleport %0}
+#alias {tp1} {#send !teleport 1}
+#alias {tp2} {#send !teleport 2}
+#alias {tp3} {#send !teleport 3}
+#alias {tp4} {#send !teleport 4}
+#alias {tp5} {#send !teleport 5}
+#alias {ts1} {#send !teleport set 1}
+#alias {ts2} {#send !teleport set 2}
+#alias {ts3} {#send !teleport set 3}
+#alias {ts4} {#send !teleport set 4}
+#alias {ts5} {#send !teleport set 5}
+#alias {cud} {#send !unwrap;animate dead;chant;study tome;=lead;=name $follower_name}
+#alias {ka} {#send !kill a}
+#alias {kb} {#send !kill b}
+#alias {kc} {#send !kill c}
+#alias {kd} {#send !kill d}
+#alias {ke} {#send !kill e}
+#alias {kf} {#send !kill f}
+#alias {kg} {#send !kill g}
+#alias {kh} {#send !kill h}
+#alias {ki} {#send !kill i}
+#alias {kj} {#send !kill j}
+#alias {kk} {#send !kill k}
+#alias {kl} {#send !kill l}
+#alias {km} {#send !kill m}
+#alias {kn} {#send !kill n}
+#alias {ko} {#send !kill o}
+#alias {kp} {#send !kill p}
+#alias {kq} {#send !kill q}
+#alias {kr} {#send !kill r}
+#alias {ks} {#send !kill s}
+#alias {kt} {#send !kill t}
+#alias {ku} {#send !kill u}
+#alias {kv} {#send !kill v}
+#alias {kw} {#send !kill w}
+#alias {kx} {#send !kill x}
+#alias {ky} {#send !kill y}
+#alias {kz} {#send !kill z}
+
+#alias {cip} {#send !comtrance invoke power}
+#alias {cie} {#send !comtrance invoke edged}
+#alias {cic} {#send !comtrance invoke crushing}
+#alias {cim} {#send !comtrance invoke psionic}
+
+#alias {gre} {#variable {guildruns_on} {1};#echo {Guildruns enabled.}}
+#alias {grd} {#variable {guildruns_on} {0};#echo {Guildruns disabled.}}
+#alias {cre} {#variable {corpseruns_on} {1};#echo {Corpse runs enabled.}}
+#alias {crd} {#variable {corpseruns_on} {0};#echo {Corpse runs disabled.}}
+
+#alias {studyall} {#read {.tt/3k/modules/necropowers.tin};powers}
+#alias {donateall} {donate all;#if {$backpack_module} {donatebpall}}
+#alias {sellall} {sell all;#if {$backpack_module} {sellbpall}}
+
+#alias {ktrigsetup}
+{
+	#local {new_ktrig} {};
+
+	#if {$corpses[coffin] < $coffin_max} {
+		#nop coffin has space;
+		#local {new_ktrig} {wrap}
+	} {
+		#nop coffin is full;
+		#if {"$freezer" == "on" && $corpses[freezer] < 50} {
+			#nop freezer has space, keep wrapping though to get the biggest corpses in the coffin;
+			#local {new_ktrig} {wrap/slab}
+		} {
+			#nop freezer is full;
+			#if {"$cooler" == "on" && $corpses[cooler] < 50} {
+				#nop cooler has space;
+				#local {new_ktrig} {preserve get/cooler corpse}
+			} {
+				#nop cooler is full or not enabled;
+				#if {$my[undead] > 0 && $corpses[follower] < 24} {
+					#nop undead has space;
+					#local {new_ktrig} {preserve get/give corpse to $follower_name}
+				} {
+					#nop undead is full (or not summoned);
+					#local {new_ktrig} {preserve get}
+				}
+			}
+		}
+	};
+
+	#if {$ringdark_on} {
+		#local {new_ktrig} {remove ring of darkness/wear ring of light/$new_ktrig}
+	};
+
+	#if {"$new_ktrig" != "$ktrig"} {
+		#variable {ktrig} {$new_ktrig};
+		#if {$ktrig_on} {
+			#send !ktrig $ktrig
+		}
+	}
+}
+
+#alias {ringson}
+{
+	#variable {ringdark_on} {1};
+	cq enable rings;
+	#gag {^You are infused with the spirit as you don the item.};
+	#gag {^The spirit fades from your grasp as you remove the item.};
+	#gag {^The moment you remove the ring, the cloak of darkness surrounding};
+	#gag {you disperses.  In but a few seconds, no evidence exists of its};
+	#gag {presence.$};
+	#gag {^The Ring sparkles into color, eventually stabilizing into a faint white};
+	#gag {light which permits you to see far ahead.};
+	#gag {^The light from the ring disappears the instant it is removed from};
+	#gag {your finger.$};
+	#gag {^As you don the ring, the air about you coalesces into a deep, soft};
+	#gag {blackness.  The darkness swirls about your being until light seems};
+	#gag {but a distant memory.$};
+	ringlight;
+	#delay {0.5} {ktrigsetup}
+}
+#alias {ringsoff}
+{
+	#variable {ringdark_on} {0};
+	cq disable rings;
+	#ungag {^You are infused with the spirit as you don the item.};
+	#ungag {^The spirit fades from your grasp as you remove the item.};
+	#ungag {^The moment you remove the ring, the cloak of darkness surrounding};
+	#ungag {you disperses.  In but a few seconds, no evidence exists of its};
+	#ungag {presence.$};
+	#ungag {^The Ring sparkles into color, eventually stabilizing into a faint white};
+	#ungag {light which permits you to see far ahead.};
+	#ungag {^The light from the ring disappears the instant it is removed from};
+	#ungag {your finger.$};
+	#ungag {^As you don the ring, the air about you coalesces into a deep, soft};
+	#ungag {blackness.  The darkness swirls about your being until light seems};
+	#ungag {but a distant memory.$};
+	ringlight;
+	#delay {0.5} {ktrigsetup}
+}
+#alias {ringlight} {remove ring of darkness;wear ring of light}
+#alias {ringdark} {remove ring of light;wear ring of darkness}
+
+#alias {suitup}
+{
+	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw 15000;home;
+	chaos;enter;s;s;w;w;enter;n;n;n;n;#2 buy moon rocks;s;s;s;s;leave;e;e;n;n;vortex;home;
+	mapgo home
+}
+
+#alias {on_watchdog_resume}
+{
+	#if {$ringdark_on} {ringlight}
+} {1}
+
+#alias {on_hockey_fan}
+{
+	#if {$ringdark_on} {
+		#local {go_dark} {1};
+		ringlight;
+	};
+	#if {$my[gp1][perc] > 95 && $my[hp][perc] < 100}
+	{
+		#send !qtrance preserve get/absorb prime
+	} {
+		#send !qtrance preserve get/absorb
+	};
+	#if {$go_dark} {
+		ringdark;
+	}
+} {1}
+
+#alias {guildsetup}
+{
+	.stop;
+	dungeons;
+	#if {$combat_que_module} {
+		rate run
+	};
+	#if {$scalers_module} {
+		scaler run
+	};
+	#delay {2} {#send !examine crafter satchel}
+}
+
+#action {^This leather satchel was issued to you when you joined the Crafters}
+{
+	#if {$bot == 1} {
+		#if {$bot_debug} {
+			update_chat Starting $bots[stepper]: Dreams[$my[powers][dream]] Corpses[$corpsestatus]
+		};
+		#delay {1} {.resume}
+	}
+}
+
+#alias {storeall}
+{
+	=summon;
+	examine duncan	
+}
+#action {^Duncan is the keeper over the ancient necromantic crypts}
+{
+	deslab all;
+	#if {"%1" != ""} {unwrap all};
+	#if {$corpses[follower] > 0} {
+		=drop all;
+	};
+	#if {"$cooler" == "on"} {
+		#$corpses[cooler] uncooler corpse
+	};
+	#if {$mask_module == 1 && "$mask_glyph_state" != "unknown"}
+	{
+		mask all;
+		#if {"$mask_glyph_state" == "off"} {trace glyph};
+		#delay {4} {
+			#variable {autostoreall} {1};
+			mask on;
+			get all;store all
+		}
+	} {
+		#variable {autostoreall} {1};
+		get all;store all
+	}
+}
+#action {^Duncan says: Thank you for donating}
+{
+	#if {$autostoreall} {
+		get all;store all
+	}
+}
+#action {^Duncan says: But you don't have any corpses}
+{
+	#if {$autostoreall} {
+		#variable {autostoreall} {0};
+		e;u;u;w;w;w;stockall;
+		e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+	}
+}
+#action {^Duncan says: The guild is extremely pleased!}
+{
+	#if {$autostoreall} {
+		get all;store all
+	}
+}
+
+#alias {startrun}
+{
+	#nop restock run betwen steppers - resume safe;
+	#variable {resume_action} {.resume};
+    .stop;
+	#delay {0.5} {
+		home;bank;deposit all;withdraw 15000;home;
+		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+		#6 w;donateall;
+		#if {$corpseruns_on} {
+			e;d;w;storeall
+		} {
+			e;u;w;w;w;stockall;
+			e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+		}
+	}
+}
+
+#alias {guildrun}
+{
+	#nop restock and corpse/item donate;
+	#nop restart the stepper rather than resume to avoid piling up monsters or hitting blockers;
+	#if {"%1" == ""} {
+		#variable {resume_action} {thisarea}
+	} {
+		#variable {resume_action} {%1}
+	};
+    .stop;
+	killbot;
+	twr;
+	#delay {0.5} {
+		bank;deposit all;withdraw 15000;home;
+		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+		#6 w;donateall;
+		#if {$corpseruns_on} {
+			e;d;w;storeall
+		} {
+			e;u;w;w;w;stockall;
+			e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+		}
+	}
+}
+
+#alias {studyrun}
+{
+	#nop use manually to donate, stock and study;
+	#variable {resume_action} {%1};
+	#delay {0.5} {
+		go home;fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+		#6 w;donateall;
+		e;u;w;w;w;stockall;
+		e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+	}
+}
+
+#action {^The power, LASTPOWER, does not exist}
+{
+	w;w;enter gate;u;s;s;sw;u;e;u;#5 e;
+	#8 s;portal;ne;ne;e;e;portal;home;smithy;
+	mapgo smithy;
+	fix all;
+	hp;
+	#delay {2} {examine dwarf}
+}
+
+#alias {on_repower}
+{
+	update_cooldown bloodarc 1;
+	update_cooldown prime 1;
+	update_cooldown unholyground 1;
+	update_cooldown illume 1;
+	update_cooldown soulbind 1;
+	update_cooldown unholy ground 1;
+	_repower_ipp
+}
+
+#action {^ | Comtrance:invoke %*,} {#variable {invoke} {%1}}
+#action {^  Your comtrance is now set to 'invoke %*' master} {#variable {invoke} {%1}}
+#action {^You attack Zephira the Grimare.} {=halt}
+#action {^%* howls in extreme pain from the titanic blast of energy!!} {#format {mobname} {%l} {%1}}
+#action {^\/\/\/The protective spirits break away from your body, fading into nothingness} {protection}
+#action {^Necromantic energy flows into your phylactery} {on_repower}
+#action {^Coffin        [  %d/  %d|} {#variable {coffin_max} {%2}}
+
+#action {^Raising your hands to the sky, you call forth the spirits of the underworld} {update_cooldown soulbind 0}
+#action {^You scream with the power of the netherworld and thrust your hands toward} {update_cooldown unholyground 0}
+#action {You are already under the effect of an unholy ground master} {update_cooldown unholyground 0}
+#action {^You reach towards the dark clouds in the heavens and call forth} {update_cooldown bloodarc 0}
+#action {You must wait until repower to attempt another bloodarc master} {update_cooldown bloodarc 0}
+#action {^You are already illuminating} {update_cooldown illume 0}
+#action {^You call upon the material planes of energy to power your soul!} {update_cooldown illume 0}
+#action {^The magical illumination fades from your body.} {update_cooldown illume 1}
+#action {^You begin to generate magical energy} {update_cooldown spark 1}
+#action {^Your body relaxes from the strain} {update_cooldown spark 0}
+
+#action {^%1 pokes you in the ribs}
+{
+	#if {@storedcorpses{} > 10 && $my[gp1][perc] > 30} {
+		#if {$corpses[follower] > 0} {
+			#send !=drop corpse
+		}; #elseif {$corpses[cooler] > 0} {
+			#send !uncooler corpse
+		}; #elseif {$corpses[freezer] > 0} {
+			#send !deslab
+		}; #elseif {$corpses[coffin] > 0} {
+			#send !unwrap
+		}; #else {
+			#send !drop corpse
+		}
+	}
+}
+
+#alias {on_mask_activated}
+{
+	#if {$ringdark_on} {
+		ringlight
+	}
+} {1}
+
+#alias {on_mask_reclaimed}
+{
+	#if {$ringdark_on && $enemy[hp] > 10} {
+		ringdark
+	}
+} {1}
+
+#nop HP[1952/2940] NP[57055/74600|1c] Memory[drm91] Grimare[100%/0c/21c] 
+#nop HP[1995/2940] NP[58051/74600|0c] Memory[drm96] Undead[none/22c]
+#nop #echo {2:%2 3:%3 4:%4 5:%5 6:%6 7:%7 8:%8 9:%9 10:%10 11:%11 12:%12 13:%13}
+#nop #var {my[hp][current]}		{%2}
+#nop #var {my[hp][max]}			{%3}
+
+#nop HP bar - grab data and perform actions
+#action {{^HP\[(\d+)\/(\d+)\] NP\[(\d+)\/(\d+)\|(\d+)c\] Memory\[drm(\d+)\] (?:Grimare|Undead)\[(?:(?:none\/(\d+)c)|(?:(\d+)\%\/(\d+)c\/(\d+)c))\]}}
+{
+	#nop allow mip to handle hp/sp updates;
+	#var {my[gp1][current]}		{%4};
+	#var {my[gp1][max]}			{%5};
+	#var {corpses[inventory]}	{%6};
+	#var {my[powers][dream]}	{%7};
+
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
+
+	#if {"%8" == ""} {
+		#var {corpses[follower]}	{%10};
+		#var {corpses[coffin]}		{%11}
+	} {
+		#var {corpses[follower]}	{0};
+		#var {corpses[coffin]}		{%8}
+	};
+
+	#if {$my[worth] < 125} {
+		#send !con
+	};
+	#if {"$my[prot]" == "OFF"} {
+		#send !protection
+	};
+
+	#nop it's assumed the mask module is being used, even if there's no mask or it's turned off it still provides enhanced functionality;
+	#if {($my[gp1][perc] < 50) && ($enemy[hp] > 5)} {
+		#if {$recently_reclaimed == 0} {
+			#if {$my[gp1][perc] <= 20} {
+				#delay {reclaim} {mu 5} {0.1}
+			};#elseif {$my[gp1][perc] <= 30} {
+				#delay {reclaim} {mu 4} {0.1}
+			};#elseif {$my[gp1][perc] <= 40} {
+				#delay {reclaim} {mu 3} {0.1}
+			};#else {
+				#delay {reclaim} {mu 2} {0.1}
+			}
+		}
+	};
+
+	#nop only do automated guild runs if we are stepping;
+	#if {$mip[round] > 0 && $bot == 1 && $halt == 0} {
+		#nop check reagents - doante, stock and study if low;
+		#if {$my[rg][ginseng] < 50 || $my[rg][goldenrod] < 50} {
+			#if {$guildruns_on} {
+				#if {$halting == 0} {
+					#variable halting 1;
+					#bell;#delay 0.5 #bell;#delay 1 #bell;
+					.stop;
+					onk #delay {4} {#if {$:mip[round] == 0} {onk clear;#variable halting 0;guildrun}}
+				}
+			}
+		};
+
+		#nop check dreams remaining - doante, stock and study if low;
+		#if {$my[powers][dream] < 60} {
+			#if {$guildruns_on} {
+				#if {$halting == 0} {
+					#variable halting 1;
+					#bell;#delay 0.5 #bell;#delay 1 #bell;
+					.stop;
+					onk #delay {4} {#if {$:mip[round] == 0} {onk clear;#variable halting 0;guildrun}}
+				}
+			}
+		};
+
+		#nop check corpse count - doante, stock, store and study if overflowing;
+		#if {$corpses[coffin] >= 20 && $corpses[freezer] >= 49 && ("$cooler" != "on" || $corpses[cooler] >= 49)} {
+			#if {$guildruns_on == 1 && $corpseruns_on == 1} {
+				#if {$halting == 0} {
+					#variable halting 1;
+					.stop;
+					onk #delay {4} {#if {$:mip[round] == 0} {onk clear;#variable halting 0;guildrun}}
+				}
+			}
+		}
+	};
+
+	#if {$ipp_charge == 0} {
+		update_cooldown prime 0;
+	};
+
+	#path get length path_len;
+	#path get position path_pos
+}
+
+#alias {update_status}
+{
+	#nop do not perform any actions from update_status as mip data is unreliable and it this alias fires several times a round;
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
+	#math {my[hp][perc]} {$my[hp][current] * 100 / $my[hp][max]};
+
+	#var {my[hp][graph]}	{@graph{$my[hp][current];$my[hp][max]}};
+	#var {my[sp][graph]}	{@graph{$my[sp][current];$my[sp][max]}};
+	#var {my[gp1][graph]}	{@graph{$my[gp1][current];$my[gp1][max]}};
+	#var {enemy[graph]}		{@graph{$enemy[hp];100}};
+	#format {hp}			{%+5s} {@colscale{$my[hp][current];$my[hp][max]}};
+	#format {hp_max}		{%-5s} {<128>$my[hp][max]<088>};
+	#format {sp}			{%+4s} {@colscale{$my[sp][current];$my[sp][max]}};
+	#format {sp_inf}		{%+3s} {<168>$my[sp][fuse][current]<088>};
+	#format {sp_max}		{%+4s} {<128>$my[sp][max]<088>};
+
+	#math {np_k} 			{$my[gp1][current] / 1000};
+	#math {np_max_k} 		{$my[gp1][max] / 1000};
+	#format {np}			{%+3s${scol}k<088>} {@colscale{$np_k;$np_max_k}};
+	#format {np_max}		{<128>%-4s<088>} {${np_max_k}${scol}k};
+
+	#format {corpsestatus} {<eea>%s<088>/<aff>%s<088>/<afc>%s<088>/<acf>%s<088>/<eae>%s<088>} {$corpses[inventory]} {$corpses[coffin]} {$corpses[freezer]} {$corpses[cooler]} {$corpses[follower]};
+	#format {roundcount} {%s} {$mip[round]};
+	#format {gstatus} {<088>%sC%sM%sS%s%s%sH%sR ${scol}[%sG%sC${scol}]<088>} {@statuscolour{$corpsetrig_on}} {@statuscolour{$mask_on}} {@statuscolour{$scalers_enabled}} {@statuscolour{$combat_que_on}} {$area_rating} {@statuscolour{$global_hardmode}} {@statuscolour{$ringdark_on}} {@statuscolour{$guildruns_on}} {@statuscolour{$corpseruns_on}};
+	#format {botstatus} {%+3s/%-3s} {$path_pos} {$path_len};
+
+	#nop #line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp($sp_inf)/$sp_max ${scol}NP:$np/$np_max ${scol}B:<088>$path_pos/$path_len} {-4};
+	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}NP:$np/$np_max   ${scol}BS:<088>$botstatus    ${scol}DR:@colscale{$my[powers][dream];650}<088>} {-4};
+	#line ignore #showme {${scol}HP:$my[hp][graph]  ${scol}SP:$my[sp][graph] ${scol}NP:$my[gp1][graph]  ${scol}EH:$enemy[graph] ${scol}RC:<088>$roundcount} {-3};
+
+	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol}) $onkill} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$invoke};
+	
+	#if {"$statusbar" != "$laststatusbar"} {
+		#line ignore #showme {$statusbar} {-6};
+		#variable {laststatusbar} {$statusbar}
+	}
+}
+
+#alias {corpsetrig}
+{
+	#nop corpse gathering handled by ktrig, do everything else here;
+	#if {$ktrig_on == 0} {
+		#send !qtrance $ktrig
+	};
+	#if {$combat_que_on} {cq refresh};
+	#if {$corpsetrig_on} {
+		#if {$corpsetrig_on == 2} {#send !divvy coins} {#send !get coins};
+		#if {$backpack_module} {stacknext} {#send !get all}
+	} {
+		#send !divvy coins
+	};
+	#if {$onkill_module} {onkillrun};
+	#delay {2} {ktrigsetup}
+}
+
+/* Preserve all */
+#variable preserving 0
+
+#alias {mpp}
+{
+	#var preserving 1;
+	#var preserve_np 0;
+	#var preserve_done 0;
+	qtrance preserve remains>20
+}
+
+#act {^You only have %d/%d necromantic points for that.} {
+	#if {$preserving} {
+		#var preserve_np 1
+	}
+}
+#act {^That corpse is already preserved master.} {
+	#if {$preserving} {
+		#var preserve_done 1
+	}
+}
+#act {^There is no corpse in this room master.} {
+	#if {$preserving} {
+		#var preserve_done 1
+	}
+}
+
+#act {^You recover your senses} {
+	#if {$preserving} {
+		#if {$preserve_np} {
+			absorb;
+			mpp
+		}; #elseif {$preserve_done} {
+			#var preserving 0
+		}; #else {
+			mpp
+		}
+	}
+}
+
+#alias {stockall}
+{
+	#foreach {*my[rg][%*]} {reagent} {
+		#local {tobuy} {};
+		#local {maxstock} {999};
+		#local {uom} {100};
+
+		#if {"$reagent" == "bloodmoss"} 
+		{
+			#variable {maxstock} {20};
+			#variable {uom} {10}
+		};
+
+		#math {tobuy} {$maxstock - $my[rg][$reagent]};
+
+		#while {$tobuy > 0}
+		{
+			#if {$tobuy > $uom}
+			{
+				#send {buy $uom $reagent}
+			} {
+				#send {buy $tobuy $reagent}
+			};
+			#math {tobuy} {$tobuy - $uom}
+		}
+	}
+}
+
+#nop Override the alias from mip.tin to suit the changed configuratoin
+#alias {.mipProcessGlineNecromancer} {
+	#if {%1 == 1} {
+		#REGEX {$mip[gline][1]} {C:%d}			{#VAR {corpses[inventory]} {&1}};
+		#REGEX {$mip[gline][1]} {Worth:%d}		{#VAR {my[worth]} {&1}};
+		#REGEX {$mip[gline][1]} {Tport:%d/%d}	{#VAR {my[ports][current]} {&1};#VAR {my[ports][max]} {&2}};
+		#REGEX {$mip[gline][1]} {Sprk:%d/%d}	{#VAR {my[glamors][current]} {&1};#VAR {my[glamors][max]} {&2}};
+		#REGEX {$mip[gline][1]} {Repower:%d}	{#VAR {my[repower]}	{&1}};
+		#REGEX {$mip[gline][1]} {Prot:%wX}		{#VAR {my[prot]} {&1}};
+		#REGEX {$mip[gline][1]} {Circle:%d}		{#VAR {my[gxp]} {&1}};
+		#REGEX {$mip[gline][1]}	{Undead:%d}		{#VAR {my[undead]} {&1}};
+		#REGEX {$mip[gline][1]}	{SPf:%d/%d}		{#VAR {my[sp][fuse][current]} {&1};#VAR {my[sp][fuse][max]}	{&2}}
+	}; #elseif {%1 == 2} {
+		#REGEX {$mip[gline][2]} {G:%d} {#VAR {my[rg][ginseng]} {&1}};
+		#REGEX {$mip[gline][2]} {P:%d} {#VAR {my[rg][black pearl]} {&1}};
+		#REGEX {$mip[gline][2]} {W:%d} {#VAR {my[rg][spider web]} {&1}};
+		#REGEX {$mip[gline][2]} {R:%d} {#VAR {my[rg][goldenrod]} {&1}};
+		#REGEX {$mip[gline][2]} {M:%d} {#VAR {my[rg][mandrake]} {&1}};
+		#REGEX {$mip[gline][2]} {N:%d} {#VAR {my[rg][pine needle]} {&1}};
+		#REGEX {$mip[gline][2]} {S:%d} {#VAR {my[rg][nightshade]} {&1}};
+		#REGEX {$mip[gline][2]} {B:%d} {#VAR {my[rg][bloodmoss]} {&1}}
+	}; #else {
+		#ECHO {<171> Invalid Gline Number <088>}
+	}
+} {1}
+
+#class {necromancer} {close}
