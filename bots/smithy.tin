@@ -1,0 +1,5 @@
+#class {bot} {open}
+
+#variable {botpath} {startrun}
+
+#class {bot} {close}
