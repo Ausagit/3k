@@ -12,6 +12,8 @@ SETUP
   		3 [Memory] (drm)
 		4 [Undead Follower/Coffin]
 
+	Edit the variables below to suit your circumastances/preferences (no_winch, follower_name, invoke, coffin_max, ktrig_on and powerstudy)
+
 COMMANDS
 	cre/crd			- enable/disable automatic corpse runs (dropoffs to Duncan)
 	gre/grd			- enable/disable automatic guild runs (low dreams)
@@ -35,14 +37,15 @@ COMMANDS
 #variable {corpseruns_on} {0}
 #variable {scol} {<bbb>}
 #variable {laststatusbar} {}
+#variable {ringdark_on} {0}
 #variable {ktrig} {wrap/preserve get}
 
+#nop set to 1 if you do not have access to the rolm winch rune
+#variable {no_winch} {0}
 #nop set your follower's name here
 #variable {follower_name} {deady}
 #nop set to your default invoke type
 #variable {invoke} {power}
-#nop set to 1 if you have an identified ring of light and ring of darkness in your inventory to train the rolm angel rune
-#variable {ringdark_on} {0}
 #nop set this to your coffin's capacity
 #variable {coffin_max} {21}
 #nop set this to 0 if you do not have ktrig
@@ -151,6 +154,8 @@ COMMANDS
 #alias {studyall} {#read {.tt/3k/modules/necropowers.tin};powers}
 #alias {donateall} {donate all;#if {$backpack_module} {donatebpall}}
 #alias {sellall} {sell all;#if {$backpack_module} {sellbpall}}
+
+#read {.tt/3k/guilds/necromancer_custom.tin}
 
 #alias {ktrigsetup}
 {
@@ -366,7 +371,7 @@ COMMANDS
 	};
     .stop;
 	killbot;
-	twr;
+	#if {$no_winch} {go home} {touch winch rune};
 	#delay {0.5} {
 		bank;deposit all;withdraw 15000;home;
 		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
