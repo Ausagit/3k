@@ -5,6 +5,9 @@
 #read {.tt/3k/modules/mask.tin}
 
 #variable {corpsetrig_on} {1}
+#variable {freezer} {off}
+
+#nop change this to the room vnum that you usually anchor in
 #variable {winchroom} {152}
 
 #nop helper functions
@@ -36,12 +39,20 @@
 }
 #function {storedcorpses}
 {
-	#math {result} {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler]}
+	#math {result} {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower]}
 }
 
+#action {^{You keep \*?Tech Ultra-Cooler.}} {#variable cooler on}
+#action {^The freezer can hold no more corpses!} {#var corpses[freezer] 50}
+#action {{You keep \*?Death\'s Freezer \((\d+) corpses\)\.}} {#variable corpses[freezer] %2;#variable freezer on} {1}
+#action {^{There is no reason to \'{slab|deslab}\' here\.}}
+{
+	#variable freezer off;
+	#variable corpses[freezer] 0
+}
 
 #nop the corpse trig action is defined here and will work before a stepper is run, once run it will override this action
-#action {^=K=%1 dealt the killing blow to} {corpsetrig}
+#action {^=K=%1 dealt the killing blow to} {corpsetrig} {9}
 #alias {cte} {#variable {corpsetrig_on} {1};#echo {<bfb>Corpse trigger enabled.<088>}}
 #alias {ctp} {#variable {corpsetrig_on} {2};#echo {<bfb>Corpse trigger enabled (party).<088>}}
 #alias {ctd} {#variable {corpsetrig_on} {0};#echo {<bfb>Corpse trigger disabled.<088>}}
@@ -66,10 +77,17 @@
 }
 
 #nop mythic knight's shield
-#action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip}
-#action {^You carefully remove the shield} {on_kshield_remove}
-#action {^There is no reason to 'bash' here} {on_kshield_remove}
-#action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan}
+#nop override these aliases by defining them elsewhere
+#alias {on_kshield_equip} {#send !repeat combat/bash/0/0} {9}
+#alias {on_kshield_remove} {#send !repeat off} {9}
+#action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip;#gag {backward.$}} {9}
+#action {^You carefully remove the shield} {on_kshield_remove;#ungag {backward.$}} {9}
+#action {^There is no reason to 'bash' here} {on_kshield_remove} {9}
+
+#nop lord stanley's cup
+#nop override this alias by defining it elsewhere and setting the priority to {1}
+#alias {on_hockey_fan} {#if {$mask_module} {guild_reclaim}} {9}
+#action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan} {9}
 
 #nop supplements to 'cbrief on mo'
 #gag {^%* tickled %* in the stomach}
@@ -78,6 +96,7 @@
 #gag {^You swing the Sword of Spirit at your foe}
 #gag {^You lash out with the Sword of Spirit}
 #gag {^>$}
+#gag {^Your party overwhelms the Beatle's defenses}
 
 #nop helpful area aliases & actions
 #alias {zhb1} {go zelligars;scaler 130;n;n;w;n;nw;e;n;e;e;s;s}
@@ -97,3 +116,6 @@
 		#send !ptell We are in $bots[stepper], room #$roomvnum, step $path_pos/$path_len. My target is at $enemy[hp]% health.
 	}
 }
+
+#nop run to a room vnum
+#alias {go2} {#map run %1}
