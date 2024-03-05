@@ -9,8 +9,8 @@ SETUP
 	HP Bar config, in exactly thhis order. You can add additional elements after #4 if you wish.
 		1 [Hit Points]
   		2 [Necro Points/Corpses]
-  		3 [Memory] (drm)
-		4 [Undead Follower/Coffin]
+  		3 [Undead Follower/Coffin]
+		4 [Memory] (drm)
 
 	Edit the variables below to suit your circumastances/preferences (no_winch, follower_name, invoke, coffin_max, ktrig_on and powerstudy)
 
@@ -24,6 +24,7 @@ COMMANDS
 
 #nop required include for common functionality and modules
 #read {.tt/3k/guilds/guilds_common.tin}
+#read {.tt/3k/guilds/necromancer_custom.tin}
 
 #class {necromancer} {kill}
 #class {necromancer} {open}
@@ -42,8 +43,6 @@ COMMANDS
 
 #nop set to 1 if you do not have access to the rolm winch rune
 #variable {no_winch} {0}
-#nop set your follower's name here
-#variable {follower_name} {deady}
 #nop set to your default invoke type
 #variable {invoke} {power}
 #nop set this to your coffin's capacity
@@ -54,23 +53,24 @@ COMMANDS
 #variable {powerstudy}
 {
 	{1} {{name}{protection} {qty}{10}}
-	{2} {{name}{animate dead} {qty}{2}}
-	{3} {{name}{soulbind} {qty}{3}}
-	{4} {{name}{unholy ground} {qty}{5}}
-	{5} {{name}{rope trick} {qty}{2}}
-	{6} {{name}{shift} {qty}{5}}
-	{7} {{name}{will} {qty}{5}}
-	{8} {{name}{dispell} {qty}{5}}
-	{9} {{name}{turn undead} {qty}{5}}
-	{10} {{name}{daemon graft} {qty}{3}}
-	{11} {{name}{unholy armour} {qty}{3}}
-	{12} {{name}{create light} {qty}{3}}
-	{13} {{name}{spiritgrasp} {qty}{2}}
-	{14} {{name}{bloodarc} {qty}{15}}
-	{15} {{name}{corpsecion} {qty}{2}}
-	{16} {{name}{mirror} {qty}{2}}
-	{17} {{name}{nocturnum} {qty}{5}}
-	{18} {{name}{dream} {qty}{800}}
+	{2} {{name}{funeral pyre} {qty}{5}}
+	{3} {{name}{animate dead} {qty}{2}}
+	{4} {{name}{soulbind} {qty}{3}}
+	{5} {{name}{unholy ground} {qty}{5}}
+	{6} {{name}{rope trick} {qty}{2}}
+	{7} {{name}{shift} {qty}{3}}
+	{8} {{name}{will} {qty}{3}}
+	{9} {{name}{dispell} {qty}{5}}
+	{10} {{name}{turn undead} {qty}{5}}
+	{11} {{name}{daemon graft} {qty}{3}}
+	{12} {{name}{unholy armour} {qty}{3}}
+	{13} {{name}{create light} {qty}{3}}
+	{14} {{name}{spiritgrasp} {qty}{2}}
+	{15} {{name}{bloodarc} {qty}{15}}
+	{16} {{name}{corpsecion} {qty}{1}}
+	{17} {{name}{mirror} {qty}{2}}
+	{18} {{name}{nocturnum} {qty}{5}}
+	{19} {{name}{dream} {qty}{800}}
 }
 
 #gag {^HP[}
@@ -113,7 +113,6 @@ COMMANDS
 #alias {ts3} {#send !teleport set 3}
 #alias {ts4} {#send !teleport set 4}
 #alias {ts5} {#send !teleport set 5}
-#alias {cud} {#send !unwrap;animate dead;chant;study tome;=lead;=name $follower_name}
 #alias {ka} {#send !kill a}
 #alias {kb} {#send !kill b}
 #alias {kc} {#send !kill c}
@@ -161,22 +160,22 @@ COMMANDS
 
 	#if {$corpses[coffin] < $coffin_max} {
 		#nop coffin has space;
-		#local {new_ktrig} {wrap}
+		#local {new_ktrig} {keep all corpse/wrap}
 	} {
 		#nop coffin is full;
 		#if {"$freezer" == "on" && $corpses[freezer] < 50} {
 			#nop freezer has space, keep wrapping though to get the biggest corpses in the coffin;
-			#local {new_ktrig} {wrap/slab}
+			#local {new_ktrig} {keep all corpse/wrap/slab}
 		} {
 			#nop freezer is full;
 			#if {"$cooler" == "on" && $corpses[cooler] < 50} {
 				#nop cooler has space;
-				#local {new_ktrig} {preserve get/cooler corpse}
+				#local {new_ktrig} {keep all corpse/preserve get/cooler corpse}
 			} {
 				#nop cooler is full or not enabled;
 				#if {$my[undead] > 0 && $corpses[follower] < 24} {
 					#nop undead has space;
-					#local {new_ktrig} {preserve get/give corpse to $follower_name}
+					#local {new_ktrig} {preserve/=get corpse}
 				} {
 					#nop undead is full (or not summoned);
 					#local {new_ktrig} {preserve get}
@@ -258,9 +257,9 @@ COMMANDS
 	};
 	#if {$my[gp1][perc] > 95 && $my[hp][perc] < 100}
 	{
-		#send !qtrance preserve get/absorb prime
+		#send !qtrance preserve/absorb prime
 	} {
-		#send !qtrance preserve get/absorb
+		#send !qtrance preserve/absorb
 	};
 	#if {$go_dark} {
 		ringdark;
@@ -413,6 +412,7 @@ COMMANDS
 	update_cooldown illume 1;
 	update_cooldown soulbind 1;
 	update_cooldown unholy ground 1;
+	update_cooldown pyre 1;
 	_repower_ipp
 }
 
@@ -466,30 +466,39 @@ COMMANDS
 	}
 } {1}
 
-#nop HP[1952/2940] NP[57055/74600|1c] Memory[drm91] Grimare[100%/0c/21c] 
-#nop HP[1995/2940] NP[58051/74600|0c] Memory[drm96] Undead[none/22c]
-#nop #echo {2:%2 3:%3 4:%4 5:%5 6:%6 7:%7 8:%8 9:%9 10:%10 11:%11 12:%12 13:%13}
+#nop HP[1952/2940] NP[57055/74600|1c] Grimare[100%/0c/21c] Memory[drm91]
+#nop HP[2805/2805] NP[51518/74600|0c] Undead[none/19c] Memory[drm465]
 #nop #var {my[hp][current]}		{%2}
 #nop #var {my[hp][max]}			{%3}
 
 #nop HP bar - grab data and perform actions
-#action {{^HP\[(\d+)\/(\d+)\] NP\[(\d+)\/(\d+)\|(\d+)c\] Memory\[drm(\d+)\] (?:Grimare|Undead)\[(?:(?:none\/(\d+)c)|(?:(\d+)\%\/(\d+)c\/(\d+)c))\]}}
+#nop             %2     %3          %4     %5     %6                                                 %8        %9     %10                   %11
+#nop             %2     %3          %4     %5     %6                                        %7                                              %8
+#action {{^HP\[(\d+)\/(\d+)\] NP\[(\d+)\/(\d+)\|(\d+)c\] (?:Grimare|Undead)\[(?:(?:none\/(\d+)c)|(?:none)|(?:(\d+)\%\/(\d+)c\/(\d+)c))\](?: Memory\[drm(\d+)\])?}}
 {
+	#nop #echo {2:%2 3:%3 4:%4 5:%5 6:%6 7:%7 8:%8 9:%9 10:%10 11:%11 12:%12 13:%13};
+	#nop with follower:   2:1994 3:2688 4:65198 5:74600 6:30 7:   8:100 9:25 10:21 11:210 12: 13:;
+	#nop without follower 2:2391 3:2881 4:56681 5:74600 6:0  7:21 8:    9:   10:   11:460 12: 13:;
+
 	#nop allow mip to handle hp/sp updates;
 	#var {my[gp1][current]}		{%4};
 	#var {my[gp1][max]}			{%5};
 	#var {corpses[inventory]}	{%6};
-	#var {my[powers][dream]}	{%7};
-
+	
 	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 
-	#if {"%8" == ""} {
-		#var {corpses[follower]}	{%10};
-		#var {corpses[coffin]}		{%11}
+	#if {"%7" == ""} {
+		#nop follower present;
+		#var {corpses[follower]}	{%9};
+		#var {corpses[coffin]}		{%10};
+		#var {my[powers][dream]}	{%11}
 	} {
 		#var {corpses[follower]}	{0};
-		#var {corpses[coffin]}		{%8}
+		#var {corpses[coffin]}		{%7};
+		#var {my[powers][dream]}	{%11}
 	};
+
+	update_status_bar;
 
 	#if {$my[worth] < 125} {
 		#send !con
@@ -586,15 +595,16 @@ COMMANDS
 	#format {botstatus} {%+3s/%-3s} {$path_pos} {$path_len};
 
 	#nop #line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp($sp_inf)/$sp_max ${scol}NP:$np/$np_max ${scol}B:<088>$path_pos/$path_len} {-4};
-	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}NP:$np/$np_max   ${scol}BS:<088>$botstatus    ${scol}DR:@colscale{$my[powers][dream];650}<088>} {-4};
+	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}NP:$np/$np_max   ${scol}BS:<088>$botstatus    ${scol}DA:@colscale{$dmg[cur][rnd];10000} ${scol}DR:@colscale{$my[powers][dream];700}} {-4};
 	#line ignore #showme {${scol}HP:$my[hp][graph]  ${scol}SP:$my[sp][graph] ${scol}NP:$my[gp1][graph]  ${scol}EH:$enemy[graph] ${scol}RC:<088>$roundcount} {-3};
 
-	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol}) $onkill} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$invoke};
-	
-	#if {"$statusbar" != "$laststatusbar"} {
-		#line ignore #showme {$statusbar} {-6};
-		#variable {laststatusbar} {$statusbar}
-	}
+	#if {$mip[round] == 0} {update_status_bar};
+}
+
+#alias {update_status_bar}
+{
+	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol})<088> %s} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$invoke} {$onkill};
+	#line ignore #showme {$statusbar} {-6};
 }
 
 #alias {corpsetrig}
