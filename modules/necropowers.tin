@@ -1,0 +1,105 @@
+#nop necropowers.tin
+/*
+	Copy the powerstudy_sample variable to your character file, rename it to powerstudy.
+	Edit the list in descending order of priority (1 = highest) for studyall.
+	Add or remove as many powers as desired, this list is just an example.
+	A Qty over 100 will be studied in blocks of 100 automatically.
+	Name is all lowercase and must match exactly what you see in the
+	power listing. If you have the qty memorised (or more) it's skipped.
+
+	Define this action in the necromancer file, adjust to suit:
+	#action {^The power, LASTPOWER, does not exist} {
+		xx;
+		yy;
+		.resume;
+		etc
+    }
+
+	And finally add the following to your necromancer file:
+	#alias {studyall} {#read {.tt/3k/guilds/necropowers.tin};powers}
+*/
+#class {necropowers} {kill}
+#class {necropowers} {open}
+
+#variable {powerstudy_sample}
+{
+	{1} {{name}{protection} {qty}{5}}
+	{2} {{name}{animate dead} {qty}{2}}
+	{3} {{name}{soulbind} {qty}{3}}
+	{4} {{name}{unholy ground} {qty}{3}}
+	{5} {{name}{rope trick} {qty}{5}}
+	{6} {{name}{shift} {qty}{5}}
+	{7} {{name}{will} {qty}{5}}
+	{8} {{name}{dispell} {qty}{3}}
+	{9} {{name}{turn undead} {qty}{3}}
+	{10} {{name}{daemon graft} {qty}{3}}
+	{11} {{name}{unholy armour} {qty}{3}}
+	{12} {{name}{create light} {qty}{3}}
+	{13} {{name}{spiritgrasp} {qty}{2}}
+	{14} {{name}{bloodarc} {qty}{5}}
+	{15} {{name}{nocturnum} {qty}{3}}
+	{16} {{name}{dream} {qty}{670}}
+}
+
+#variable {globes} {0}
+#variable {memory} {0}
+
+#action {{^You currently have (\d+)/(\d+) open memory globes}}
+{
+	#variable {globes[open]} {%2};
+	#variable {globes[max]} {%3};
+}
+
+#action {^For more on any power, type 'info <power>'}
+{
+	necstudy
+}
+
+#nop    daemon graft(3):   3    9       di/nocturnum(3): 114  342
+#action {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}}
+{
+	#variable {memory[%2]} {%3};
+
+	#if {%6}
+	{
+		#variable {memory[%5]} {%6}
+	}
+}
+
+#alias {necstudy}
+{
+	#foreach {*powerstudy[%*]} {index}
+	{
+		#local {name} {$powerstudy[$index][name]};
+		#local {qty} {$powerstudy[$index][qty]};
+		#local {tostudy} {0};
+
+		#if {$memory[$name]}
+		{
+			#if {$memory[$name] < $qty}
+			{
+				#math {tostudy} {$qty - $memory[$name]}
+			} {
+				#nop no studying necessary
+			}
+		} {
+			#variable {tostudy} {$qty}
+		};
+
+		#while {$tostudy > 0}
+		{
+			#if {$tostudy > 100}
+			{
+				#send !study $name 100
+			} {
+				#send !study $name $tostudy
+			};
+			#math {tostudy} {$tostudy - 100}
+		}
+	};
+
+	#send !study LASTPOWER;
+	#delay {0} {#class {necropowers} {kill}}
+}
+
+#class {necropowers} {close}
