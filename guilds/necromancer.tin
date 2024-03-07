@@ -6,7 +6,8 @@ SETUP
 	gline1: worth, powers, protection, repower, circle, fused, follower
 	gline2: add all reagents
 	
-	HP Bar config, in exactly thhis order. You can add additional elements after #4 if you wish.
+	HP Bar config, add the elements below to your bar, make sure Hit Points is first, and the others are next, and remain on the first line of your hp bar.
+	If you add more and it wraps, add a new action for it down below in this file.
 		1 [Hit Points]
   		2 [Necro Points/Corpses]
   		3 [Undead Follower/Coffin]
@@ -468,36 +469,31 @@ COMMANDS
 
 #nop HP[1952/2940] NP[57055/74600|1c] Grimare[100%/0c/21c] Memory[drm91]
 #nop HP[2805/2805] NP[51518/74600|0c] Undead[none/19c] Memory[drm465]
-#nop #var {my[hp][current]}		{%2}
-#nop #var {my[hp][max]}			{%3}
+#action {^{HP\[.+}} {process_hpbar {%0}}
 
-#nop HP bar - grab data and perform actions
-#nop             %2     %3          %4     %5     %6                                                 %8        %9     %10                   %11
-#nop             %2     %3          %4     %5     %6                                        %7                                              %8
-#action {{^HP\[(\d+)\/(\d+)\] NP\[(\d+)\/(\d+)\|(\d+)c\] (?:Grimare|Undead)\[(?:(?:none\/(\d+)c)|(?:none)|(?:(\d+)\%\/(\d+)c\/(\d+)c))\](?: Memory\[drm(\d+)\])?}}
+#alias {process_hpbar}
 {
-	#nop #echo {2:%2 3:%3 4:%4 5:%5 6:%6 7:%7 8:%8 9:%9 10:%10 11:%11 12:%12 13:%13};
-	#nop with follower:   2:1994 3:2688 4:65198 5:74600 6:30 7:   8:100 9:25 10:21 11:210 12: 13:;
-	#nop without follower 2:2391 3:2881 4:56681 5:74600 6:0  7:21 8:    9:   10:   11:460 12: 13:;
-
 	#nop allow mip to handle hp/sp updates;
-	#var {my[gp1][current]}		{%4};
-	#var {my[gp1][max]}			{%5};
-	#var {corpses[inventory]}	{%6};
-	
-	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 
-	#if {"%7" == ""} {
-		#nop follower present;
-		#var {corpses[follower]}	{%9};
-		#var {corpses[coffin]}		{%10};
-		#var {my[powers][dream]}	{%11}
+	#regexp {%1} {{NP\[(\d+)\/(\d+)\|(\d+)c\]}} {
+		#var {my[gp1][current]}		{&2};
+		#var {my[gp1][max]}			{&3};
+		#var {corpses[inventory]}	{&4}
+	};
+	#regexp {%1} {{(?:\w+)\[(\d+)\%\/(\d+)c\/(\d+)c\]}} {
+		#var {corpses[follower]} {&3};
+		#var {corpses[coffin]} {&4}
 	} {
-		#var {corpses[follower]}	{0};
-		#var {corpses[coffin]}		{%7};
-		#var {my[powers][dream]}	{%11}
+		#regexp {%1} {{Undead\[none\/(\d+)c\]}} {
+			#var {corpses[follower]} {0};
+			#var {corpses[coffin]} {&2}
+		}
+	};
+	#regexp {%1} {{drm(\d+)}} {
+		#var {my[powers][dream]} {&2}
 	};
 
+	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 	update_status_bar;
 
 	#if {$my[worth] < 125} {
