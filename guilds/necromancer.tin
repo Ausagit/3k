@@ -791,8 +791,8 @@ COMMANDS
 		#REGEX {$mip[gline][1]} {Tport:%d/%d}	{#VAR {my[ports][current]} {&1};#VAR {my[ports][max]} {&2}};
 		#REGEX {$mip[gline][1]} {Sprk:%d/%d}	{#VAR {my[glamors][current]} {&1};#VAR {my[glamors][max]} {&2}};
 		#REGEX {$mip[gline][1]} {Repower:%d}	{#VAR {my[repower]}	{&1}};
-		#REGEX {$mip[gline][1]} {Prot:%wX}		{#VAR {my[prot]} {&1}};
-		#REGEX {$mip[gline][1]} {Circle:%d}		{#VAR {my[gxp]} {&1}};
+		#REGEX {$mip[gline][1]} {Prot:%w}		{#VAR {my[prot]} {&1}};
+		#REGEX {$mip[gline][1]} {Circle:%f}		{#VAR {my[gxp]} {&1}};
 		#REGEX {$mip[gline][1]}	{Undead:%d}		{#VAR {my[undead]} {&1}};
 		#REGEX {$mip[gline][1]}	{SPf:%d/%d}		{#VAR {my[sp][fuse][current]} {&1};#VAR {my[sp][fuse][max]}	{&2}}
 	}; #elseif {%1 == 2} {
