@@ -98,7 +98,7 @@
                 #nop some housekeeping;
                 #local {cdname} {};
                 #format {cdname} {%l} {&2};
-                #local {index} {@get_index{$cdname}};
+                #local {index} {@get_cq_index{$cdname}};
                 #local {condition} {&8};
                 #replace {condition} {'} {"};
 
@@ -114,7 +114,7 @@
             }
         };
         #case "remove" {
-            #local {index} {@get_index{%2}};
+            #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
                 #echo {<028>Combat que '$combat_que[$index][name]' removed.<088>};
                 #list {combat_que} {delete} {$index}
@@ -182,7 +182,7 @@
             #if {$cq_debug} {#echo {CQ: refreshed}}
         };
         #case "enable" {
-            #local {index} {@get_index{%2}};
+            #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
                 #variable {combat_que[$index][enabled]} {1};
                 #echo {<028>Combat que '$combat_que[$index][name]' enabled.<088>}
@@ -191,7 +191,7 @@
             }
         };
         #case "disable" {
-            #local {index} {@get_index{%2}};
+            #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
                 #variable {combat_que[$index][enabled]} {0};
                 #echo {<028>Combat que '$combat_que[$index][name]' disabled.<088>}
@@ -305,7 +305,7 @@
     #echo {$cuelist<088>}
 }
 
-#function {get_index}
+#function {get_cq_index}
 {
     #if {&{combat_que[]} != 0} {
         #local {cdname} {};
@@ -319,7 +319,7 @@
 
 #function {execute_name}
 {
-    #local {index} {@get_index{%1}};
+    #local {index} {@get_cq_index{%1}};
     #if {$index > 0} {
         #variable {result} {@execute_index{$index}}
     }
@@ -436,7 +436,7 @@
 
 #alias {update_cooldown %1 %d}
 {
-    #local {index} {@get_index{%1}};
+    #local {index} {@get_cq_index{%1}};
     #if {$index > 0} {
         #if {%2 == 0} {
             #nop abilitiy has been used;
