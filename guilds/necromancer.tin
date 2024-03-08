@@ -26,6 +26,7 @@ COMMANDS
 #nop required include for common functionality and modules
 #read {.tt/3k/guilds/guilds_common.tin}
 #read {.tt/3k/guilds/necromancer_custom.tin}
+#read {.tt/3k/modules/necropowers.tin}
 
 #class {necromancer} {kill}
 #class {necromancer} {open}
@@ -54,29 +55,6 @@ COMMANDS
 #variable {ktrig_on} {1}
 #nop change the below to 1 if you are not Tier III yet
 #variable {study_on} {0}
-#nop edit this table to set power study priority and quantities, ensure the numbering is consecuitive
-#variable {powerstudy}
-{
-	{1} {{name}{protection} {qty}{10}}
-	{2} {{name}{funeral pyre} {qty}{5}}
-	{3} {{name}{animate dead} {qty}{2}}
-	{4} {{name}{soulbind} {qty}{3}}
-	{5} {{name}{unholy ground} {qty}{5}}
-	{6} {{name}{rope trick} {qty}{2}}
-	{7} {{name}{shift} {qty}{3}}
-	{8} {{name}{will} {qty}{3}}
-	{9} {{name}{dispell} {qty}{5}}
-	{10} {{name}{turn undead} {qty}{5}}
-	{11} {{name}{daemon graft} {qty}{3}}
-	{12} {{name}{unholy armour} {qty}{3}}
-	{13} {{name}{create light} {qty}{3}}
-	{14} {{name}{spiritgrasp} {qty}{2}}
-	{15} {{name}{bloodarc} {qty}{15}}
-	{16} {{name}{corpsecion} {qty}{1}}
-	{17} {{name}{mirror} {qty}{2}}
-	{18} {{name}{nocturnum} {qty}{5}}
-	{19} {{name}{dream} {qty}{800}}
-}
 
 #highlight {^You prepare the corpse with magical energies and store it away.} {yellow}
 #highlight {^You prepare the corpse with your innate, necromantic energies.} {yellow}
@@ -98,7 +76,7 @@ COMMANDS
 #substitute {^  I can wait for you} {<218>Death tells you: <138>I can wait for you}
 #substitute {^  We will be together soon enough} {<218>Death tells you: <138>We will be together soon enough}
 #substitute {^  You escaped my grasp this time} {<218>Death tells you: <138>You escaped my grasp this time}
-#substitute {^  Live onward my} {<218>Death tells you: <138>Live onward my }
+#substitute {^  Live onward my} {<218>Death tells you: <138>Live onward my}
 #substitute {^  Don't worry my %1, I always collect my debts} {<218>Death tells you: <138>Don't worry my %1, I always collect my debts}
 #substitute {^  %1, my %2, I will embrace you soon} {<218>Death tells you: <138>%1, my %2, I will embrace you soon}
 #substitute {^  Your destiny will wait a bit longer} {<218>Death tells you: <138>Your destiny will wait a bit longer}
@@ -165,7 +143,6 @@ COMMANDS
 #alias {cre} {#variable {corpseruns_on} {1};#echo {Corpse runs enabled.}}
 #alias {crd} {#variable {corpseruns_on} {0};#echo {Corpse runs disabled.}}
 
-#alias {studyall} {#read {.tt/3k/modules/necropowers.tin};powers}
 #alias {donateall} {donate all;#if {$backpack_module} {donatebpall}}
 #alias {sellall} {sell all;#if {$backpack_module} {sellbpall}}
 
