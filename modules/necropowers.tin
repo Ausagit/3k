@@ -75,7 +75,7 @@
 	}
 }
 
-#function {get_index}
+#function {get_np_index}
 {
     #if {&{powerstudy[]} != 0} {
         #local {cdname} {};
@@ -94,7 +94,7 @@
 			#regexp {%0} {{add ([a-zA-z0-9\s]+) (\d+) (\d+)}} {
 				#local {cdname} {};
                 #format {cdname} {%l} {&2};
-				#local {index} {@get_index{$cdname}};
+				#local {index} {@get_np_index{$cdname}};
                 #if {$index != 0} {
                     #nop delete the existing entry and replace it;
                     #list {powerstudy} {delete} {$index}
@@ -109,7 +109,7 @@
 		#case "remove" {
 			#local {cdname} {};
             #format {cdname} {%l} {%2};
-			#local {index} {@get_index{$cdname}};
+			#local {index} {@get_np_index{$cdname}};
             #if {$index > 0} {
                 #echo {<258>$powerstudy[$index][name] removed.<088>};
                 #list {powerstudy} {delete} {$index}
