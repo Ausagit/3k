@@ -1,48 +1,45 @@
 #nop necropowers.tin
 /*
-	Copy the powerstudy_sample variable to your character file, rename it to powerstudy.
-	Edit the list in descending order of priority (1 = highest) for studyall.
-	Add or remove as many powers as desired, this list is just an example.
+	To view the list of configured powers:
+		npowers	- list the configured powers for studying
+
+	To add a power to the list, where the priority 1 is the highest:
+		npowers add <name> <quantity> <priority>
+
+	To remove a power from the list:
+		npowers remove <name>
+
+	To begin studying the powers in ascending priority:
+		studyall
+
+	Define this action in the necromancer file, adjust to suit:
+		#action {^The power, LASTPOWER, does not exist} {xx;yy;.resume;etc}
+
 	A Qty over 100 will be studied in blocks of 100 automatically.
 	Name is all lowercase and must match exactly what you see in the
 	power listing. If you have the qty memorised (or more) it's skipped.
-
-	Define this action in the necromancer file, adjust to suit:
-	#action {^The power, LASTPOWER, does not exist} {
-		xx;
-		yy;
-		.resume;
-		etc
-    }
-
-	And finally add the following to your necromancer file:
-	#alias {studyall} {#read {.tt/3k/guilds/necropowers.tin};powers}
 */
 #class {necropowers} {kill}
+#class {necropowerslist} {kill}
 #class {necropowers} {open}
 
-#variable {powerstudy_sample}
-{
-	{1} {{name}{protection} {qty}{5}}
-	{2} {{name}{animate dead} {qty}{2}}
-	{3} {{name}{soulbind} {qty}{3}}
-	{4} {{name}{unholy ground} {qty}{3}}
-	{5} {{name}{rope trick} {qty}{5}}
-	{6} {{name}{shift} {qty}{5}}
-	{7} {{name}{will} {qty}{5}}
-	{8} {{name}{dispell} {qty}{3}}
-	{9} {{name}{turn undead} {qty}{3}}
-	{10} {{name}{daemon graft} {qty}{3}}
-	{11} {{name}{unholy armour} {qty}{3}}
-	{12} {{name}{create light} {qty}{3}}
-	{13} {{name}{spiritgrasp} {qty}{2}}
-	{14} {{name}{bloodarc} {qty}{5}}
-	{15} {{name}{nocturnum} {qty}{3}}
-	{16} {{name}{dream} {qty}{670}}
+#class {necropowerslist} {read} {.tt/char/$ses_name-necropowers.tin}
+#class {necropowerslist} {size} {nplsize};
+
+#if {$nplsize == 0} {
+	#echo {Power file not found, creating default.};
+	#class {necropowerslist} {kill};
+	#class {necropowerslist} {open};
+	#variable {powerstudy} {};
+	#class {necropowerslist} {close};
+	#class {necropowerslist} {save};
+	#class {necropowerslist} {write} {.tt/char/$ses_name-necropowers.tin};
+	#unvariable {nplsize}
 }
 
 #variable {globes} {0}
 #variable {memory} {0}
+#variable {studying} {0}
 
 #action {{^You currently have (\d+)/(\d+) open memory globes}}
 {
@@ -52,26 +49,106 @@
 
 #action {^For more on any power, type 'info <power>'}
 {
-	necstudy
+	#unaction {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}};
+
+	#if {$studying} {
+		necstudy
+	}
 }
 
-#nop    daemon graft(3):   3    9       di/nocturnum(3): 114  342
-#action {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}}
+#alias {studyall}
 {
-	#variable {memory[%2]} {%3};
+	#if {&{powerstudy[]} == 0} {
+		#echo {You have no configured powers to study.}
+	} {
+		#variable {studying} {1};
+		#nop    daemon graft(3):   3    9       di/nocturnum(3): 114  342;
+		#action {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}}
+		{
+			#variable {memory[%%2]} {%%3};
+			#if {%%6}
+			{
+				#variable {memory[%%5]} {%%6}
+			}
+		};
+		#delay {0.5} {powers}
+	}
+}
 
-	#if {%6}
-	{
-		#variable {memory[%5]} {%6}
+#function {get_index}
+{
+    #if {&{powerstudy[]} != 0} {
+        #local {cdname} {};
+        #format {cdname} {%l} {%1};
+        #list {powerstudy} {indexate} {name};
+        #list {powerstudy} {find} {$cdname} {result}
+    } {
+        #variable {result} {0}
+    }
+}
+
+#alias {npowers}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#regexp {%0} {{add ([a-zA-z0-9\s]+) (\d+) (\d+)}} {
+				#local {cdname} {};
+                #format {cdname} {%l} {&2};
+				#local {index} {@get_index{$cdname}};
+                #if {$index != 0} {
+                    #nop delete the existing entry and replace it;
+                    #list {powerstudy} {delete} {$index}
+                };
+				#list {powerstudy} {add} {{{name}{&2}{quantity}{&3}{priority}{&4}}};
+				#class {necropowerslist} {write} {.tt/char/$ses_name-necropowers.tin};
+				#echo {<258>Power &2 added, quantity &3, priority &4.<088>}
+			} {
+				#echo {<258>Syntax is 'npowers add <name> <quantity> <priority>'<088>}
+			}
+		};
+		#case "remove" {
+			#local {cdname} {};
+            #format {cdname} {%l} {%2};
+			#local {index} {@get_index{$cdname}};
+            #if {$index > 0} {
+                #echo {<258>$powerstudy[$index][name] removed.<088>};
+                #list {powerstudy} {delete} {$index}
+			} {
+				#echo {<258>Syntax is 'npowers remove <name>'.<088>}
+			}
+		};
+		#case "" {
+			#local {header} {};
+			#local {powerout} {};
+            #format {powerout} {<258>-----------------------------------------------------------------<088>} {$powerout};
+            #format {powerout} {%s\n<258> Power                Qty Priority<088>} {$powerout};
+            #format {powerout} {%s\n<258>-----------------------------------------------------------------<088>} {$powerout};
+			#if {&{powerstudy[]} == 0} {
+				#format {powerout} {%s\n You have no configured powers to study} {$powerout}
+			} {
+				#list {powerstudy} {indexate} {priority};
+				#list {powerstudy} {order};
+				#nop #list {powerstudy} {reverse};
+				#foreach {*powerstudy[%*]} {index} {
+						#format {powerout} {%s\n %-20s %+3s %s} {$powerout} {$powerstudy[$index][name]} {$powerstudy[$index][quantity]} {$powerstudy[$index][priority]}
+				};
+			};
+			#echo {$powerout}
+		}
 	}
 }
 
 #alias {necstudy}
 {
-	#foreach {*powerstudy[%*]} {index}
+	#variable {studying} {0};
+
+	#list {powerstudy} {indexate} {priority};
+	#list {powerstudy} {order};
+
+	#foreach {*powerstudy[]} {index}
 	{
 		#local {name} {$powerstudy[$index][name]};
-		#local {qty} {$powerstudy[$index][qty]};
+		#local {qty} {$powerstudy[$index][quantity]};
 		#local {tostudy} {0};
 
 		#if {$memory[$name]}
@@ -99,7 +176,6 @@
 	};
 
 	#send !study LASTPOWER;
-	#delay {0} {#class {necropowers} {kill}}
 }
 
 #class {necropowers} {close}
