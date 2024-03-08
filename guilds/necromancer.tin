@@ -20,7 +20,7 @@ COMMANDS
 	gre/grd			- enable/disable automatic guild runs (low dreams)
 	cte/ctd/ctp 	- corpse trigger, enable/disable/enable party
 	studyrun [arg]	- run to the guild to study, execute arg when done
-
+	storeall		- use manually or automatically in guildruns to store all your corpses at duncan, excluding coffin by default
 */
 
 #nop required include for common functionality and modules
@@ -46,10 +46,14 @@ COMMANDS
 #variable {no_winch} {0}
 #nop set to your default invoke type
 #variable {invoke} {power}
+#nop change the form below to match yours
+#variable {form} {lich}
 #nop set this to your coffin's capacity
 #variable {coffin_max} {21}
 #nop set this to 0 if you do not have ktrig
 #variable {ktrig_on} {1}
+#nop change the below to 1 if you are not Tier III yet
+#variable {study_on} {0}
 #nop edit this table to set power study priority and quantities, ensure the numbering is consecuitive
 #variable {powerstudy}
 {
@@ -74,20 +78,30 @@ COMMANDS
 	{19} {{name}{dream} {qty}{800}}
 }
 
-#gag {^HP[}
-
-#substitute {C:O=|======> } {}
-#substitute {C:D=##====<E } {}
-
 #highlight {^You prepare the corpse with magical energies and store it away.} {yellow}
 #highlight {^You prepare the corpse with your innate, necromantic energies.} {yellow}
 #highlight {^The corpse is already preserved, but grabbing it anyway.} {yellow}
 #highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
 
+#gag {^HP[}
 #gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
 #gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
 #gag {^with your own.$}
 #gag {^The aegis rune on the PsiMace pulses for a moment.}
+#gag {^From afar, Death favors you.}
+#gag {^Death tells you:}
+
+#substitute {C:O=|======> } {}
+#substitute {C:D=##====<E } {}
+#substitute {^  My favor will cost you} {<218>Death tells you: <138>My favor will cost you}
+#substitute {^  I can feel you moving closer} {<218>Death tells you: <138>I can feel you moving closer}
+#substitute {^  I can wait for you} {<218>Death tells you: <138>I can wait for you}
+#substitute {^  We will be together soon enough} {<218>Death tells you: <138>We will be together soon enough}
+#substitute {^  You escaped my grasp this time} {<218>Death tells you: <138>You escaped my grasp this time}
+#substitute {^  Live onward my} {<218>Death tells you: <138>Live onward my }
+#substitute {^  Don't worry my %1, I always collect my debts} {<218>Death tells you: <138>Don't worry my %1, I always collect my debts}
+#substitute {^  %1, my %2, I will embrace you soon} {<218>Death tells you: <138>%1, my %2, I will embrace you soon}
+#substitute {^  Your destiny will wait a bit longer} {<218>Death tells you: <138>Your destiny will wait a bit longer}
 
 #alias {a} {#send !absorb}
 #alias {aa} {#send !absorb prime}
@@ -103,7 +117,7 @@ COMMANDS
 #alias {ng} {#send !necrogram}
 #alias {com} {#send !chat}
 #alias {comm} {#send !chat}
-#alias {tp} {#send !teleport %0}
+#alias {tp} {#send !teleport}
 #alias {tp1} {#send !teleport 1}
 #alias {tp2} {#send !teleport 2}
 #alias {tp3} {#send !teleport 3}
@@ -277,10 +291,12 @@ COMMANDS
 	#if {$scalers_module} {
 		scaler run
 	};
-	#delay {2} {#send !examine crafter satchel}
+
+	#nop triger .resume from examining the satchel to allow things to catch up;
+	#delay {2} {#send !examine crafter's satchel}
 }
 
-#action {^This leather satchel was issued to you when you joined the Crafters}
+#action {^This leather satchel was issued to you}
 {
 	#if {$bot == 1} {
 		#if {$bot_debug} {
@@ -293,7 +309,7 @@ COMMANDS
 #alias {storeall}
 {
 	=summon;
-	examine duncan	
+	examine duncan
 }
 #action {^Duncan is the keeper over the ancient necromantic crypts}
 {
@@ -330,7 +346,13 @@ COMMANDS
 	#if {$autostoreall} {
 		#variable {autostoreall} {0};
 		e;u;u;w;w;w;stockall;
-		e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+		e;e;e;d;#5 e;
+		#nop at rr;
+		#if {$study_on} {
+			form_study
+		} {
+			end_run
+		}
 	}
 }
 #action {^Duncan says: The guild is extremely pleased!}
@@ -342,7 +364,7 @@ COMMANDS
 
 #alias {startrun}
 {
-	#nop restock run betwen steppers - resume safe;
+	#nop restock run betwen steppers using smithy.tin - resume safe;
 	#variable {resume_action} {.resume};
     .stop;
 	#delay {0.5} {
@@ -353,9 +375,25 @@ COMMANDS
 			e;d;w;storeall
 		} {
 			e;u;w;w;w;stockall;
-			e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+			e;e;e;d;#5 e;
+			#nop at rr;
+			#if {$study_on} {
+				form_study
+			} {
+				end_run
+			}
 		}
 	}
+}
+
+#alias {end_run}
+{
+	#nop starting at receiving room;
+	#8 s;portal;ne;ne;e;e;portal;home;smithy;
+	mapgo smithy;
+	fix all;
+	hp;
+	#delay {2} {examine dwarf}
 }
 
 #alias {guildrun}
@@ -378,7 +416,13 @@ COMMANDS
 			e;d;w;storeall
 		} {
 			e;u;w;w;w;stockall;
-			e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+			e;e;e;d;#5 e;
+			#nop @rr;
+			#if {$study_on} {
+				form_study
+			} {
+				end_run
+			}
 		}
 	}
 }
@@ -391,18 +435,64 @@ COMMANDS
 		go home;fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
 		#6 w;donateall;
 		e;u;w;w;w;stockall;
-		e;e;e;d;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+		e;e;e;d;#5 e;
+		#nop at rr;
+		#if {$study_on} {
+			form_study
+		} {
+			end_run
+		}
 	}
 }
 
+#alias {form_study}
+{
+	#switch {"$form"} {
+		#case "lich" {
+			#5 w;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+		};
+		#case "pure" {
+
+		};
+		#case "vampire" {
+
+		};
+		#case "were" {
+
+		};
+		#case "reaper" {
+
+		};
+		#default {
+			#5 w;s;studyall
+		}
+	}
+}
+
+#nop the study module attempts to study LASTPOWER, which fails and this action catches it and resumes movement
 #action {^The power, LASTPOWER, does not exist}
 {
-	w;w;enter gate;u;s;s;sw;u;e;u;#5 e;
-	#8 s;portal;ne;ne;e;e;portal;home;smithy;
-	mapgo smithy;
-	fix all;
-	hp;
-	#delay {2} {examine dwarf}
+	#switch {"$form"} {
+		#case "lich" {
+			w;w;enter gate;u;s;s;sw;u;e;u;#5 e
+		};
+		#case "pure" {
+
+		};
+		#case "vampire" {
+
+		};
+		#case "were" {
+
+		};
+		#case "reaper" {
+
+		};
+		#default {
+			n;#5 e
+		}
+	};	
+	end_run
 }
 
 #alias {on_repower}
@@ -473,7 +563,7 @@ COMMANDS
 
 #alias {process_hpbar}
 {
-	#nop allow mip to handle hp/sp updates;
+	#nop allow mip to handle hp/sp updates, but only trigger off of NP values in this alias;
 
 	#regexp {%1} {{NP\[(\d+)\/(\d+)\|(\d+)c\]}} {
 		#var {my[gp1][current]}		{&2};
@@ -533,7 +623,7 @@ COMMANDS
 		};
 
 		#nop check dreams remaining - doante, stock and study if low;
-		#if {$my[powers][dream] < 60} {
+		#if {$study_on == 1 && $my[powers][dream] < 60} {
 			#if {$guildruns_on} {
 				#if {$halting == 0} {
 					#variable halting 1;
@@ -590,8 +680,13 @@ COMMANDS
 	#format {gstatus} {<088>%sC%sM%sS%s%s%sH%sR ${scol}[%sG%sC${scol}]<088>} {@statuscolour{$corpsetrig_on}} {@statuscolour{$mask_on}} {@statuscolour{$scalers_enabled}} {@statuscolour{$combat_que_on}} {$area_rating} {@statuscolour{$global_hardmode}} {@statuscolour{$ringdark_on}} {@statuscolour{$guildruns_on}} {@statuscolour{$corpseruns_on}};
 	#format {botstatus} {%+3s/%-3s} {$path_pos} {$path_len};
 
-	#nop #line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp($sp_inf)/$sp_max ${scol}NP:$np/$np_max ${scol}B:<088>$path_pos/$path_len} {-4};
-	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}NP:$np/$np_max   ${scol}BS:<088>$botstatus    ${scol}DA:@colscale{$dmg[cur][rnd];10000} ${scol}DR:@colscale{$my[powers][dream];700}} {-4};
+	#if {$study_on} {
+		#variable {powerstatus} { ${scol}DR:@colscale{$my[powers][dream];700}}
+	} {
+		#variable {powerstatus} {}
+	};
+
+	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}NP:$np/$np_max   ${scol}BS:<088>$botstatus    ${scol}DA:@colscale{$dmg[cur][rnd];10000}$powerstatus} {-4};
 	#line ignore #showme {${scol}HP:$my[hp][graph]  ${scol}SP:$my[sp][graph] ${scol}NP:$my[gp1][graph]  ${scol}EH:$enemy[graph] ${scol}RC:<088>$roundcount} {-3};
 
 	#if {$mip[round] == 0} {update_status_bar};
