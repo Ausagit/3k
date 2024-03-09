@@ -79,6 +79,42 @@
 #alias {donateall} {donate all;donatebpall}
 #alias {trashall} {trashbpall}
 
+#alias {on_guild_login}
+{
+	startwatchdog;
+	jump;w;home;mapgo home;
+	dungeons;
+	cq_setup;
+	cpc auto;gs50
+}
+
+#alias {on_guild_reconnect}
+{
+	startwatchdog;
+	keep coffin;keep morgue;keep cooler;keep mask;
+	cc;
+	dungeons;
+	touch diamond rune;
+	cq_setup;
+	cpc auto;gs50
+}
+
+#alias {cq_setup}
+{
+	#if {$combat_que_module} {
+		cq clear;
+		cq add ewell/7/start/999/0/(energy well;
+		cq add owl/8/end/0/0/touch owl rune;
+		cq add raven/9/start/0/0/touch raven rune;
+		cq add heal/1/any/0/1/(heal $:ses_name/$:my[hp][current] < 100;
+		cq add rings/0/start/300/0/ringdark;
+		cq disable rings;
+		cq on
+	} {
+		#echo {Unable to setup combat que - module not loaded}
+	}
+}
+
 #alias {startrun}
 {
     .stop;
@@ -88,7 +124,7 @@
 #alias {suitup}
 {
 	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw 100000;home;
-	guild;e;u;w;w;#2 buy 3;#4 buy 4;keep all;wear all;genarm sword;e;e;u;e;e;commence;
+	guild;e;u;w;w;#2 buy 3;#4 buy 4;e;s;#3 buy blaster;genarm blaster 2;genarm blaster 3;wield blaster;keep all;n;e;u;e;e;commence;
 	#delay {25} {=call;=afollow on;=aswap on;=akill on;w;w;d;d;w;home;chaos;enter;s;s;w;w;enter;n;n;n;n;
 	#4 buy moon rocks;#2 put moon rocks in backpack 5;#2 put moon rocks in backpack 6;s;s;s;s;leave;e;e;n;n;vortex;home;
 	mapgo home}
@@ -120,9 +156,9 @@
 /*
 	Events from guilds_common.tin
 */
-#alias {on_kshield_equip} {autocombat bash}
-#alias {on_kshield_remove} {autocombat clear}
-#alias {on_hockey_fan} {#send !recharge;#send !reclaim}
+#alias {on_kshield_equip} {autocombat bash} {1}
+#alias {on_kshield_remove} {autocombat clear} {1}
+#alias {on_hockey_fan} {#send !recharge;#send !reclaim} {1}
 
 #alias {cpc}
 {
@@ -746,4 +782,3 @@
 } {1}
                                                         
 #class {gentech} {close}
-
