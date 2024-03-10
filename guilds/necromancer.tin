@@ -23,7 +23,7 @@ GUILD SETUP
 		1 [Hit Points]
   		2 [Necro Points/Corpses]
   		3 [Undead Follower/Coffin]
-		4 [Memory] (drm)
+		4 [Memory] (drm)    Note: add alter if you are a werebeast, shapeshift if a vampire, or dream if you are a reaper/pure/lich. Only add one of the three types.
 
 COMMANDS
 	nset			- configure various necromatic settings, 'nset help' for more details
@@ -64,10 +64,11 @@ COMMANDS
 	#variable {nset[follower_enter]} {};
 	#variable {nset[follower_exit]} {};
 	#variable {nset[follower_max]} {10};
-	#variable {nset[dreams_low]} {20};
+	#variable {nset[heals_low]} {0};
 	#variable {nset[stash_note1]} {};
 	#variable {nset[stash_note2]} {};
 	#variable {nset[inventory_max]} {5};
+	#variable {nset[coins]} {10000};
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -85,13 +86,14 @@ COMMANDS
 #variable {laststatusbar} {}
 #variable {ringdark_on} {0}
 #variable {ktrig} {wrap/preserve get}
+#variable {low_coins} {0}
 
 #highlight {^You prepare the corpse with magical energies and store it away.} {yellow}
 #highlight {^You prepare the corpse with your innate, necromantic energies.} {yellow}
 #highlight {^The corpse is already preserved, but grabbing it anyway.} {yellow}
 #highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
 
-#gag {^HP[}
+#ungag {^HP[}
 #gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
 #gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
 #gag {^with your own.$}
@@ -127,36 +129,39 @@ COMMANDS
 		#local {nsetout} {};
 		#format {nsetout} {<258>------------------------------------------------------------------------------<088>} {$nsetout};
 		#format {nsetout} {%s\n<158> Setting              Description<088>} {$nsetout};
-		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};		
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {winch_on}		{Use the rolm for guildruns instead of running};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {study_on}		{Set to 0 if you are Tier III or above};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {dreams_low}		{If guildruns are on, study when dreams dip below this};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {invoke}			{Set to your default/preferred invoke dmg type};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_name}	{Your follower's name for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_desc}	{Your follower's description for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_gender}{Your follower's gender for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_enter}	{Your follower's enter message for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_exit}	{Your follower's exit message for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_max}	{Your follower's maximum corpse capacity};
+		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coffin_max}		{Your coffin's maximum corpse capacity};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {inventory_max}	{Your carried maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coins}			{Number of coins to carry around after a guildrun};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {heals_low}		{If guildruns on, study when form heal < this. 0 = disable};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_desc}	{Your follower's description for use with the cud alias};		
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_enter}	{Your follower's enter message for use with the cud alias};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_exit}	{Your follower's exit message for use with the cud alias};		
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_gender}{Your follower's gender for use with the cud alias};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_max}	{Your follower's maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_name}	{Your follower's name for use with the cud alias};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {form}			{Your necromatic form, for paths and setting configs};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {inventory_max}	{Your carried maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {invoke}			{Set to your default/preferred invoke dmg type};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};		
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note1}	{Roomnote for your 1st corpse stash for auto restocking};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note2}	{Roomnote for your 2nd corpse stash for auto restocking};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {study_on}		{Set to 0 if you are Tier III or above};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {winch_on}		{Use the rolm for guildruns instead of running};
 		#echo {$nsetout}
 	};
 	#else {
-		#regexp {%0} {{(winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|dreams_low|stash_note1|stash_note2) (.+)}} {
+		#regexp {%0} {{(winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
+			#nop add input checking later;
 			#variable {nset[&2]} {&3};
 			#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
 			#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.}
 		} {
-			#echo {<258>Syntax is nset <winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|dreams_low|stash_note1|stash_note2> <value>.<088>}
+			#echo {<258>Syntax is nset <winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins> <value>.<088>}
 		}
 	}
 }
 
+#nop called from common.tin module when you log in
 #alias {on_guild_login}
 {
 	startwatchdog;
@@ -167,6 +172,7 @@ COMMANDS
 	#delay {4} {ktrigsetup}
 }
 
+#nop called from common.tin module whenever you reconnect
 #alias {on_guild_reconnect}
 {
 	startwatchdog;
@@ -184,7 +190,7 @@ COMMANDS
 {
 	#if {$combat_que_module} {
 		cq clear;
-		cq add ewell/8/start/999/0/(energy well;
+		cq add ewell/8/start/990/0/(energy well;
 		cq add raven/9/start/0/0/touch raven rune;
 		cq add owl/8/end/0/0/touch owl rune;
 		cq add bloodarc/8/start/500/0/barc;
@@ -362,7 +368,7 @@ COMMANDS
 
 #alias {suitup}
 {
-	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw 15000;home;
+	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw $nset[coins];home;
 	chaos;enter;s;s;w;w;enter;n;n;n;n;#2 buy moon rocks;s;s;s;s;leave;e;e;n;n;vortex;home;
 	mapgo home
 }
@@ -470,13 +476,24 @@ COMMANDS
 	}
 }
 
+
+#action {^  You do not have %1 gold coins to contribute master.}
+{
+	#variable {low_coins} {1};
+}
+
+#action {^You hand %1 coins to %2, who then %3 to the guild.}
+{
+	#variable {low_coins} {0};
+}
+
 #alias {startrun}
 {
 	#nop restock run betwen steppers using smithy.tin - resume safe;
 	#variable {resume_action} {.resume};
     .stop;
 	#delay {0.5} {
-		home;bank;deposit all;withdraw 15000;home;
+		home;bank;deposit all;withdraw $nset[coins];home;
 		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
 		#6 w;donateall;
 		#if {$corpseruns_on == 1} {
@@ -530,7 +547,7 @@ COMMANDS
 			#nop corpse_unstash;
 		};
 		#delay {4} {
-			bank;deposit all;withdraw 15000;home;
+			bank;deposit all;withdraw $nset[coins];home;
 			fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
 			#6 w;donateall;
 			#if {$corpseruns_on == 1} {
@@ -613,7 +630,7 @@ COMMANDS
 {
 	#switch {"$nset[form]"} {
 		#case "lich" {
-			#5 w;d;w;d;ne;n;n;d;enter gate;e;enter;studyall
+			#5 w;d;w;d;ne;n;n;d;enter gate;e;enter
 		};
 		#case "pure" {
 
@@ -622,15 +639,16 @@ COMMANDS
 
 		};
 		#case "were" {
-
+			#5 w;d;w;sw;sw;se;s;u;nw;nw;path;sw;w
 		};
 		#case "reaper" {
 
 		};
 		#default {
-			#5 w;s;studyall
+			#5 w;s
 		}
-	}
+	};
+	studyall
 }
 
 #nop the study module attempts to study LASTPOWER, which fails and this action catches it and resumes movement
@@ -647,7 +665,7 @@ COMMANDS
 
 		};
 		#case "were" {
-
+			e;ne;path;se;se;d;n;nw;ne;ne;e;u;#5 e
 		};
 		#case "reaper" {
 
@@ -671,8 +689,8 @@ COMMANDS
 	_repower_ipp
 }
 
-#action {^ | Comtrance:invoke %*,} {#variable {invoke} {%1}}
-#action {^  Your comtrance is now set to 'invoke %*' master} {#variable {invoke} {%1}}
+#action {^ | Comtrance:%*,} {#variable {comtrance} {%1}}
+#action {^  Your comtrance is now set to '%*' master} {#variable {comtrance} {%1}}
 #action {^You attack Zephira the Grimare.} {=halt}
 #action {^%* howls in extreme pain from the titanic blast of energy!!} {#format {mobname} {%l} {%1}}
 #action {^\/\/\/The protective spirits break away from your body, fading into nothingness} {protection}
@@ -746,15 +764,24 @@ COMMANDS
 		}
 	};
 	#regexp {%1} {{drm(\d+)}} {
-		#var {my[powers][dream]} {&2}
+		#var {my[powers][heal]} {&2}
+	};
+	#regexp {%1} {{alt(\d+)}} {
+		#var {my[powers][heal]} {&2}
+	};
+	#regexp {%1} {{ssh(\d+)}} {
+		#var {my[powers][heal]} {&2}
 	};
 
 	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 	update_status_bar;
 
 	#if {$my[worth] < 125} {
-		#send !con
+		#math {con_amount} {(125-$my[worth]) * 20};
+		#if {$con_amount > 200} {#variable $con_amount 200};
+		#send !con $con_amount
 	};
+
 	#if {"$my[prot]" == "OFF"} {
 		#send !protection
 	};
@@ -783,7 +810,7 @@ COMMANDS
 		};
 
 		#nop check dreams remaining - doante, stock and study if low;
-		#if {$nset[study_on] == 1 && $my[powers][dream] < $nset[dream]} {
+		#if {$nset[study_on] == 1 && $nset[heals_low] > 0 && $my[powers][heal] < $nset[heals_low]} {
 			prep_guildrun
 		};
 
@@ -796,6 +823,11 @@ COMMANDS
 		#elseif {$corpseruns_on == 2 && @storedcorpses{} < 10} {
 			#nop corpse pickup;
 			#nop prep_guildrun
+		};
+
+		#nop if the last con failed due to no coins, prep a guildrun;
+		#if {$low_coins} {
+			prep_guildrun
 		}
 	};
 
@@ -856,7 +888,7 @@ COMMANDS
 
 #alias {update_status_bar}
 {
-	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol})<088> %s} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$invoke} {$onkill};
+	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol})<088> %s} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$comtrance} {$onkill};
 	#line ignore #showme {$statusbar} {-6};
 }
 
@@ -945,7 +977,7 @@ COMMANDS
 	}
 }
 
-#nop Override the alias from mip.tin to suit the changed configuratoin
+#nop Override the alias from mip.tin to suit the changed configuration - see header notes for more details
 #alias {.mipProcessGlineNecromancer} {
 	#if {%1 == 1} {
 		#REGEX {$mip[gline][1]} {C:%d}			{#VAR {corpses[inventory]} {&1}};
