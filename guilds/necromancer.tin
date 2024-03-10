@@ -26,13 +26,18 @@ GUILD SETUP
 		4 [Memory] (drm)    Note: add alter if you are a werebeast, shapeshift if a vampire, or dream if you are a reaper/pure/lich. Only add one of the three types.
 
 COMMANDS
-	nset			- configure various necromatic settings, 'nset help' for more details
-	cre/crd			- enable/disable automatic corpse runs (dropoffs to Duncan)
-	gre/grd			- enable/disable automatic guild runs (low dreams)
-	cte/ctd/ctp 	- corpse trigger, enable/disable/enable party
-	studyrun [arg]	- run to the guild to study, execute arg when done
-	storeall		- use manually or automatically in guildruns to store all your corpses at duncan, excluding coffin by default
-	cud				- create an undead follower using the configured name and description from nset
+	nset			- Configure various necromatic settings, 'nset help' for more details
+	cre/crd			- Enable/disable automatic corpse runs (dropoffs to Duncan)
+	gre/grd			- Enable/disable automatic guild runs (low dreams)
+	cte/ctd/ctp 	- Corpse trigger, enable/disable/enable party
+	studyrun [arg]	- Run to the guild to study, execute arg when done
+	storeall		- Use manually or automatically in guildruns to store all your corpses at duncan, excluding coffin by default
+	cud				- Create an undead follower using the configured name and description from nset
+	guildrun [arg]	- Used automatically or you can hit it manually to run to the guild to doante, study, restock and then restart the stepper.
+					  If arg is supplied, arg will be executed when done instead of the default 'thisarea'
+	studyrun [arg]  - Use manually to run to the guild to donate, stock and study. If arg is supplied it is executed when done.
+	stockrun [arg]  - Use to manually run to the guild to donate and restock. If arg is supplied it is executed when done.
+					  
 */
 
 #nop required include for common functionality and modules
@@ -93,7 +98,7 @@ COMMANDS
 #highlight {^The corpse is already preserved, but grabbing it anyway.} {yellow}
 #highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
 
-#ungag {^HP[}
+#gag {^HP[}
 #gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
 #gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
 #gag {^with your own.$}
@@ -145,7 +150,7 @@ COMMANDS
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};		
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note1}	{Roomnote for your 1st corpse stash for auto restocking};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note2}	{Roomnote for your 2nd corpse stash for auto restocking};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {study_on}		{Set to 0 if you are Tier III or above};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {study_on}		{Turn on\/off study runs, respect\/ignore heals_low};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {winch_on}		{Use the rolm for guildruns instead of running};
 		#echo {$nsetout}
 	};
@@ -366,11 +371,12 @@ COMMANDS
 #alias {ringlight} {remove ring of darkness;wear ring of light}
 #alias {ringdark} {remove ring of light;wear ring of darkness}
 
+#nop handy alias when you first login
 #alias {suitup}
 {
 	jump;e;home;morgue;acquire coffin;home;bank;deposit all;withdraw $nset[coins];home;
-	chaos;enter;s;s;w;w;enter;n;n;n;n;#2 buy moon rocks;s;s;s;s;leave;e;e;n;n;vortex;home;
-	mapgo home
+	chaos;enter;s;s;w;w;enter;n;n;n;n;buy moon rocks;s;s;s;s;leave;e;e;n;n;vortex;home;
+	mapgo home;keep all
 }
 
 #alias {on_watchdog_resume}
@@ -455,27 +461,21 @@ COMMANDS
 		get all;store all
 	}
 }
-#action {^Duncan says: But you don't have any corpses}
-{
-	#if {$autostoreall} {
-		#variable {autostoreall} {0};
-		e;u;u;w;w;w;stockall;
-		e;e;e;d;#5 e;
-		#nop at rr;
-		#if {$nset[study_on]} {
-			form_study
-		} {
-			end_run
-		}
-	}
-}
 #action {^Duncan says: The guild is extremely pleased!}
 {
 	#if {$autostoreall} {
 		get all;store all
 	}
 }
-
+#action {^Duncan says: But you don't have any corpses}
+{
+	#if {$autostoreall} {
+		#variable {autostoreall} {0};
+		e;u;#5 e;
+		#nop at rr;
+		#if {$nset[study_on]} {form_study} {end_run}
+	}
+}
 
 #action {^  You do not have %1 gold coins to contribute master.}
 {
@@ -490,46 +490,11 @@ COMMANDS
 #alias {startrun}
 {
 	#nop restock run betwen steppers using smithy.tin - resume safe;
-	#variable {resume_action} {.resume};
-    .stop;
-	#delay {0.5} {
-		home;bank;deposit all;withdraw $nset[coins];home;
-		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
-		#6 w;donateall;
-		#if {$corpseruns_on == 1} {
-			e;d;w;storeall
-		} {
-			e;u;w;w;w;stockall;
-			e;e;e;d;#5 e;
-			#nop at rr;
-			#if {$nset[study_on]} {
-				form_study
-			} {
-				end_run
-			}
-		}
-	}
+	.stop;home;
+	#delay {0.5} {guildrun .resume}
 }
 
-#alias {end_run}
-{
-	#nop starting at receiving room;
-	#8 s;portal;ne;ne;e;e;portal;home;smithy;
-	mapgo smithy;
-	fix all;
-	hp;
-	#delay {2} {examine dwarf}
-}
-
-#action {^This rough looking dwarf looks at you cunningly with eyes of stone}
-{
-	#nop use the dwaft in the smithy as a timing mechanism to let everything catch up before resuming/restarting;
-    #if {"$resume_action" != ""} {
-        #echo {Resuming via '$resume_action'.};
-        #delay {0.5} {$resume_action}
-    }
-}
-
+#nop automatic or manual use to trigger a guildrun
 #alias {guildrun}
 {
 	#nop restock and corpse/item donate;
@@ -540,59 +505,75 @@ COMMANDS
 		#variable {resume_action} {%1}
 	};
     .stop;
-	killbot;
 	#if {$nset[winch_on]} {touch winch rune} {go home};
 	#delay {0.5} {
-		#if {$corpseruns_on == 2} {
-			#nop corpse_unstash;
-		};
-		#delay {4} {
-			bank;deposit all;withdraw $nset[coins];home;
-			fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
-			#6 w;donateall;
-			#if {$corpseruns_on == 1} {
-				e;d;w;storeall
-			} {
-				e;u;w;w;w;stockall;
-				e;e;e;d;#5 e;
-				#nop @rr;
-				#if {$nset[study_on]} {
-					form_study
-				} {
-					end_run
-				}
-			}
+		bank;deposit all;withdraw $nset[coins];home;
+		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+		#6 w;donateall;
+		e;u;#3 w;stockall;
+		#3 e;d;#5 e;
+		#nop at rr;
+		#if {$corpseruns_on == 1} {
+			#5 w;d;w;storeall
+		} {
+			#if {$nset[study_on]} {form_study} {end_run}
 		}
 	}
+}
+
+#nop use manually to donate, stock and study
+#alias {studyrun}
+{
+	#variable {resume_action} {%1};
+	go home;
+	#delay {0.5} {
+		fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+		#6 w;donateall;
+		e;u;w;w;w;stockall;
+		e;e;e;d;#5 e;
+		#nop at rr;
+		#if {$nset[study_on]} {form_study} {end_run}
+	}
+}
+
+#nop use manually to donate and restock
+#alias {stockrun}
+{
+	#variable {resume_action} {%1};
+	go home;
+	fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
+	#6 w;donateall;
+	e;u;w;w;w;stockall;
+	e;e;e;d;#5 e;
+	#nop at rr;
+	end_run
+}
+
+#nop internal use to finish the guildruns
+#alias {end_run}
+{
+	#nop starting at receiving room;
+	#8 s;portal;ne;ne;e;e;portal;home;smithy;
+	mapgo smithy;
+	fix all;
+	hp;
+	#variable {low_coins} {0};
+	#delay {2} {examine dwarf}
+}
+
+#nop use the dwaft in the smithy as a timing mechanism to let everything catch up before resuming/restarting
+#action {^This rough looking dwarf looks at you cunningly with eyes of stone}
+{
+    #if {"$resume_action" != ""} {
+        #echo {Resuming via '$resume_action'.};
+        #delay {0.5} {$resume_action}
+    }
 }
 
 #nop work in progress
 #alias {corpse_unstash}
 {
-	#nop brute force restock (for now);
-	#if {"$nset[stash_note1]" != ""} {
-		go $nset[stash_note1];
-		keep all;
-		#if {"$freezer" == "on"} {
-			#nop move fresh corpses to the freezer;
-			unwrap all;slab all;wrap all;
-		};
-		unkeep all corpse;
-		#$corpses[inventory] drop corpse;
-		#delay {2} {
-			#50 get corpse from box;
-			#50 drop corpse;
-			=get all;
-			wrap all;
-			#25 get corpse from box;
-			#25 drop corpse;
-			#$nset[inventory_max] get corpse;
-			keep all corpse;
-			gg;put all in box;
-			gg;put all in box;
-			go home
-		}
-	}
+
 }
 
 #nop work in progress
@@ -602,30 +583,13 @@ COMMANDS
 	mask active;
 	#delay {3} {
 		=drop all;
-		#3 mpp;
+		#5 mpp;
 		unkeep all corpse;
-		#3 {get all;put all in box}
+		#4 {get all;put all in box}
 	}
 }
 
-#alias {studyrun}
-{
-	#nop use manually to donate, stock and study;
-	#variable {resume_action} {%1};
-	#delay {0.5} {
-		go home;fantasy;portal;#15 e;leave;#4 e;#2 ne;n;#2 ne;e;#2 sw;portal;#8 n;
-		#6 w;donateall;
-		e;u;w;w;w;stockall;
-		e;e;e;d;#5 e;
-		#nop at rr;
-		#if {$nset[study_on]} {
-			form_study
-		} {
-			end_run
-		}
-	}
-}
-
+#nop directions to the form libraries from RR
 #alias {form_study}
 {
 	#switch {"$nset[form]"} {
@@ -691,7 +655,7 @@ COMMANDS
 
 #action {^ | Comtrance:%*,} {#variable {comtrance} {%1}}
 #action {^  Your comtrance is now set to '%*' master} {#variable {comtrance} {%1}}
-#action {^You attack Zephira the Grimare.} {=halt}
+#action {^You attack %1 the Grimare.} {=halt}
 #action {^%* howls in extreme pain from the titanic blast of energy!!} {#format {mobname} {%l} {%1}}
 #action {^\/\/\/The protective spirits break away from your body, fading into nothingness} {protection}
 #action {^Necromantic energy flows into your phylactery} {on_repower}
@@ -826,7 +790,7 @@ COMMANDS
 		};
 
 		#nop if the last con failed due to no coins, prep a guildrun;
-		#if {$low_coins} {
+		#if {$low_coins == 1} {
 			prep_guildrun
 		}
 	};
@@ -844,8 +808,27 @@ COMMANDS
 	#if {$halting == 0} {
 		#variable halting 1;
 		.stop;
-		onk #delay {4} {#if {$:mip[round] == 0} {onk clear;#variable halting 0;guildrun}}
+		onk check_guildrun;
+		#bell;
+		#delay 1 #bell;
 	}
+}
+
+#alias {check_guildrun}
+{
+	#delay {4} {
+		#if {$mip[round] == 0} {
+			onk clear;
+			#variable halting 0;
+			guildrun
+		}
+	}
+}
+
+#alias {cancel_guildrun}
+{
+	onk clear;
+	#variable halting 0;
 }
 
 #alias {update_status}
@@ -956,7 +939,7 @@ COMMANDS
 		#local {maxstock} {999};
 		#local {uom} {100};
 
-		#if {"$reagent" == "bloodmoss"} 
+		#if {"$reagent" == "bloodmoss"}
 		{
 			#variable {maxstock} {20};
 			#variable {uom} {10}
