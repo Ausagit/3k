@@ -202,13 +202,22 @@ COMMANDS
 		cq add familiar/0/start/0/0/call;
 		cq add prime/6/start/501/0/prime;
 		cq add unholyground/7/med/0/0/unholy ground;
-		cq add illume/1/any/0/1/illume/$:my[gp1][perc] < 80 && $:my[glamors][current] > 0;
-		cq add heal/1/any/0/1/(heal $:ses_name/$:my[hp][current] < 1000;
+		cq add illume/1/any/0/1/illume/@:check_glamor{gp1;80};
 		cq add rings/0/start/300/0/ringdark;
 		cq disable rings;
 		cq on
 	} {
 		#echo {Unable to setup combat que - module not loaded}
+	}
+}
+
+#nop flexible function for form glamors with the combat que, e.g. @check_glamor{gp1;80}
+#function {check_glamor}
+{
+	#if {$my[%1][perc] < %2 && $my[glamors][current] > 0} {
+		#variable result 1;
+	} {
+		#variable result 0;
 	}
 }
 
@@ -836,6 +845,7 @@ COMMANDS
 	#nop do not perform any actions from update_status as mip data is unreliable and it this alias fires several times a round;
 	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 	#math {my[hp][perc]} {$my[hp][current] * 100 / $my[hp][max]};
+	#math {my[sp][perc]} {$my[sp][current] * 100 / $my[sp][max]};
 
 	#var {my[hp][graph]}	{@graph{$my[hp][current];$my[hp][max]}};
 	#var {my[sp][graph]}	{@graph{$my[sp][current];$my[sp][max]}};
