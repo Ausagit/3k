@@ -1,7 +1,7 @@
 #nop necromancer.tin
 /*
 REQUIRED MODULES
-	You need to include the common.tin module in your character file.
+	You need to include the common.tin module in your **character** file.
 		#read {.tt/3k/modules/common.tin}
 	Modules required (included from the common module above):
 		backpack.tin (uses by default 4 gentech backpacks)
@@ -40,7 +40,7 @@ COMMANDS
 					  
 */
 
-#nop required include for common functionality and modules
+#nop power study module
 #read {.tt/3k/modules/necropowers.tin}
 
 #nop this file has my personal stuff in it, you can just ignore the failed read or make your own
@@ -74,6 +74,7 @@ COMMANDS
 	#variable {nset[stash_note2]} {};
 	#variable {nset[inventory_max]} {5};
 	#variable {nset[coins]} {10000};
+	#variable {nset[bloodmoss]} {5};
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -135,6 +136,7 @@ COMMANDS
 		#format {nsetout} {<258>------------------------------------------------------------------------------<088>} {$nsetout};
 		#format {nsetout} {%s\n<158> Setting              Description<088>} {$nsetout};
 		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {bloodmoss}		{Your desired bloodmoss stock quantity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coffin_max}		{Your coffin's maximum corpse capacity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coins}			{Number of coins to carry around after a guildrun};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {heals_low}		{If guildruns on, study when form heal < this. 0 = disable};
@@ -155,13 +157,13 @@ COMMANDS
 		#echo {$nsetout}
 	};
 	#else {
-		#regexp {%0} {{(winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
+		#regexp {%0} {{(bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
 			#nop add input checking later;
 			#variable {nset[&2]} {&3};
 			#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
 			#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.}
 		} {
-			#echo {<258>Syntax is nset <winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins> <value>.<088>}
+			#echo {<258>Syntax is nset <bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins> <value>.<088>}
 		}
 	}
 }
@@ -172,7 +174,8 @@ COMMANDS
 	startwatchdog;
 	jump;w;home;mapgo home;
 	dungeons;
-	cq_setup;
+	cq load;
+	cq on;
 	cip;hp;gs;
 	#delay {4} {ktrigsetup}
 }
@@ -185,30 +188,29 @@ COMMANDS
 	cc;
 	dungeons;
 	touch diamond rune;
-	cq_setup;
+	cq load;
+	cq on;
 	hp;gs;
 	#delay {4} {ktrigsetup}
 }
 
-#nop setup combat que
+#nop setup combat que - no longer required but maintained for backup
 #alias {cq_setup}
 {
-	#if {$combat_que_module} {
-		cq clear;
-		cq add ewell/8/start/990/0/(energy well;
-		cq add raven/9/start/0/0/touch raven rune;
-		cq add owl/8/end/0/0/touch owl rune;
-		cq add bloodarc/8/start/500/0/barc;
-		cq add familiar/0/start/0/0/call;
-		cq add prime/6/start/501/0/prime;
-		cq add unholyground/7/med/0/0/unholy ground;
-		cq add illume/1/any/0/1/illume/@:check_glamor{gp1;80};
-		cq add rings/0/start/300/0/ringdark;
-		cq disable rings;
-		cq on
-	} {
-		#echo {Unable to setup combat que - module not loaded}
-	}
+	cq clear;
+	cq add ewell/8/start/990/0/(energy well;
+	cq add raven/9/start/0/0/touch raven rune;
+	cq add owl/8/end/0/0/touch owl rune;
+	cq add bloodarc/8/start/500/0/barc;
+	cq add familiar/0/start/0/0/call;
+	cq add prime/6/start/501/0/prime;
+	cq add unholyground/7/med/0/0/unholy ground;
+	cq add illume/1/any/0/1/illume/@:check_glamor{gp1;80};
+	cq add conjure/0/start/0/0/conjure undead;
+	cq add soulbind/9/start/0/0/soulbind;
+	cq add rings/0/start/300/0/ringdark;
+	cq disable rings;
+	cq on
 }
 
 #nop flexible function for form glamors with the combat que, e.g. @check_glamor{gp1;80}
@@ -219,6 +221,11 @@ COMMANDS
 	} {
 		#variable result 0;
 	}
+}
+
+#function {check_nocturnum}
+{
+
 }
 
 #alias {a} {#send !absorb}
@@ -656,9 +663,12 @@ COMMANDS
 	update_cooldown prime 1;
 	update_cooldown unholyground 1;
 	update_cooldown illume 1;
+	update_cooldown spark 1;
 	update_cooldown soulbind 1;
 	update_cooldown unholy ground 1;
 	update_cooldown pyre 1;
+	update_cooldown conjure 1;
+
 	_repower_ipp
 }
 
@@ -670,16 +680,24 @@ COMMANDS
 #action {^Necromantic energy flows into your phylactery} {on_repower}
 #action {^Coffin        [  %d/  %d|} {#variable {nset[coffin_max]} {%2}}
 
+#nop combat que cooldown management
 #action {^Raising your hands to the sky, you call forth the spirits of the underworld} {update_cooldown soulbind 0}
 #action {^You scream with the power of the netherworld and thrust your hands toward} {update_cooldown unholyground 0}
-#action {You are already under the effect of an unholy ground master} {update_cooldown unholyground 0}
+#action {^  You are already under the effect of an unholy ground master} {update_cooldown unholyground 0}
 #action {^You reach towards the dark clouds in the heavens and call forth} {update_cooldown bloodarc 0}
-#action {You must wait until repower to attempt another bloodarc master} {update_cooldown bloodarc 0}
-#action {^You are already illuminating} {update_cooldown illume 0}
+#action {^  You must wait until repower to attempt another bloodarc master} {update_cooldown bloodarc 0}
+
 #action {^You call upon the material planes of energy to power your soul!} {update_cooldown illume 0}
+#action {^You are already illuminating} {update_cooldown illume 0}
 #action {^The magical illumination fades from your body.} {update_cooldown illume 1}
-#action {^You begin to generate magical energy} {update_cooldown spark 1}
-#action {^Your body relaxes from the strain} {update_cooldown spark 0}
+#action {^You are already sparking} {update_cooldown spark 0}
+#action {^You begin to generate magical energy} {update_cooldown spark 0}
+#action {^Your body relaxes from the strain} {update_cooldown spark 1}
+
+#action {^  You are only able to conjure %1 undead per repower master} {update_cooldown conjure 0}
+#action {^  You must have at least one %1 to invoke a soulbind master} {update_cooldown soulbind 0}
+#action {^  You have already invoked a soulbind this repower master} {update_cooldown soulbind 0}
+
 
 #action {^%1 pokes you in the ribs}
 {
@@ -951,7 +969,7 @@ COMMANDS
 
 		#if {"$reagent" == "bloodmoss"}
 		{
-			#variable {maxstock} {20};
+			#variable {maxstock} {$nset[bloodmoss]};
 			#variable {uom} {10}
 		};
 
