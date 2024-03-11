@@ -733,6 +733,7 @@ COMMANDS
 #nop HP[1952/2940] NP[57055/74600|1c] Grimare[100%/0c/21c] Memory[drm91]
 #nop HP[2805/2805] NP[51518/74600|0c] Undead[none/19c] Memory[drm465]
 #action {^{HP\[.+}} {process_hpbar {%0}}
+#action {^{C:HP\[.+}} {process_hpbar {%0}}
 
 #alias {process_hpbar}
 {
