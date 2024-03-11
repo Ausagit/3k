@@ -51,7 +51,6 @@
 #class {combat_que} {kill}
 #class {combat_que} {open}
 
-#variable {combat_que} {}
 #variable {combat_que_on} {0}
 #variable {combat_que_manual} {0}
 #variable {cq_debug} {0}
@@ -59,8 +58,18 @@
 #variable {area_rating} {0}
 #variable {cq2} {}
 #variable {sort_by} {rating}
+#variable {cqfilename} {}
 
-#alias {cqload} {#read .tt/3k/modules/combat_que.tin}
+#alias {_cq_init}
+{
+    #nop create an empty que when the module loads;
+    #class {combat_que_list} {kill};
+    #class {combat_que_list} {open};
+    #variable {combat_que} {};
+    #class {combat_que_list} {close};
+    #class {combat_que_list} {save};
+}
+_cq_init
 
 #nop example que
 #alias {cq_example}
@@ -70,12 +79,13 @@
     cq add owl/8/end/0/0/touch owl rune;
     cq add raven/9/start/0/0/touch raven rune;
     cq add heal/1/any/999/1/(heal $:ses_name/$:my[hp][current] < 1000;
-    cq add hmheal/5/any/900/1/hmheal/@:health_check{1000};
+    cq add hmheal/5/any/900/1/hmheal/@:check_health{1000};
     rate 8;
     cq on
 }
 
-#function {health_check}
+#nop to check health under 70%, use: @:check_health{70}
+#function {check_health}
 {
     #if {$my[hp][current] < %1} {
         #variable {result} {1}
@@ -94,7 +104,6 @@
             #regexp {%0} {{add ([a-zA-z0-9_]{1,12})\/(-?[0-9])\/(start|end|high|med|low|any)\/([0-9]{1,3})\/([0-9])\/([a-zA-Z0-9_\$\:='@\( ]+)(?:\/)?(.*)?}} {
                 #nop cq add <name>/<rating>/<when>/<priority>/<repeat>/<cmd>/<condition>;
                 #nop cq add   %2     %3       %4      %5         %6     %7       &8;
-
                 #nop some housekeeping;
                 #local {cdname} {};
                 #format {cdname} {%l} {&2};
@@ -108,24 +117,69 @@
                 };
 
                 #list {combat_que} {add} {{{name}{$cdname}{rating}{&3}{when}{&4}{priority}{&5}{repeat}{&6}{cmd}{&7}{condition}{$condition}{locked}{0}{ready}{1}{enabled}{1}}};
-                #echo {<028>Combat que '$cdname' added.<088>}
+                #echo {<028>Combat que '$cdname' added. Note, changes are not saved automatically.<088>};
+
             } {
                 #echo {<028>Syntax is:\ncq add name/rating/when/priority/repeat/command/condition<088>}
-            }
-        };
-        #case "remove" {
-            #local {index} {@get_cq_index{%2}};
-            #if {$index > 0} {
-                #echo {<028>Combat que '$combat_que[$index][name]' removed.<088>};
-                #list {combat_que} {delete} {$index}
-            } {
-                #echo {<028>Combat que '%2' not found.<088>}
             }
         };
         #case "clear" {
             #variable {combat_que} {};
             #variable {combat_que_on} {0};
+            #variable {cqfilename} {};
             #echo {<028>Combat que cleared.<088>}
+        };
+        #case "load" {
+            #local {filename_ok} {0};
+            #local {cqfilename_temp} {};
+            #local {cuelistsize} {};
+            #if {"%2" == ""} {
+                #variable {cqfilename_temp} {$ses_name-$guild-que.tin};
+                #variable {filename_ok} {1}
+            } {
+                #regexp {%0} {{load ([a-zA-Z0-9_]{1,30})}} {
+                    #nop valid format;
+                    #variable {cqfilename_temp} {$ses_name-$guild-%2-que.tin};
+                    #variable {filename_ok} {1}
+                } {
+                    #echo {<028>Filename must be a combination of letters, numbers and underscore.<088>};
+                    #variable {filename_ok} {0}
+                }
+            };
+
+            #if {$filename_ok} {
+                #nop backup the current que data;
+                #local {cq_temp} {$combat_que};
+                #class {combat_que_list} {kill};
+                #class {combat_que_list} {read} {.tt/char/$cqfilename_temp};
+                #class {combat_que_list} {size} {cuelistsize};
+                #if {$cuelistsize == 0} {
+                    #echo {<028>Combat que '$cqfilename_temp' not found.<088>};
+                    #nop recreate the empty cue list and popular from the backup;
+                    _cq_init;
+                    #variable {combat_que} {$cq_temp};
+                } {
+                    #nop everthing is ok, cue has loaded from file;
+                    #variable {cqfilename} {$cqfilename_temp};
+                    #echo {<028>Combat que '$cqfilename' loaded with.<088>};
+                };                
+                 
+            }
+        };
+        #case "save" {
+            #if {"%2" == ""} {
+                #if {"$cqfilename" == ""} {
+                    #nop save as the default file;
+                    #variable {cqfilename} {$ses_name-$guild-que.tin}
+                } {
+                    #nop ratain the current filename
+                }
+            } {
+                #nop new filename;
+                #variable {cqfilename} {$ses_name-$guild-%2-que.tin}
+            };
+            #class {combat_que_list} {write} {.tt/char/$cqfilename};
+            #echo {<028>Combat que saved to '$cqfilename'.<088>}
         };
         #case "on" {
             #if {&{combat_que[]} != 0} {
@@ -199,6 +253,15 @@
                 #echo {<028>Combat que '%2' not found.<088>}
             }
         };
+        #case "remove" {
+            #local {index} {@get_cq_index{%2}};
+            #if {$index > 0} {
+                #echo {<028>Combat que '$combat_que[$index][name]' removed. Note, changes are not saved automatically.<088>};
+                #list {combat_que} {delete} {$index};
+            } {
+                #echo {<028>Combat que '%2' not found.<088>}
+            }
+        };
         #case "debug" {
             #if {$cq_debug} {
                 #variable {cq_debug} {0};
@@ -268,7 +331,7 @@
 #alias {_showcombatque}
 {
     #local {cuelist} {};
-    #format {cuelist} {<128> COMBAT QUE                                                           <088>%sEN<088> <128>AR:<028>%s<088>} {@check_colour{$combat_que_on}} {$area_rating} {$cuelist};
+    #format {cuelist} {<128> COMBAT QUE %-50s        <088>%sEN<088> <128>AR:<028>%s<088>} {[$cqfilename]} {@check_colour{$combat_que_on}} {$area_rating} {$cuelist};
     #format {cuelist} {%s\n<028>==============================================================================<088>} {$cuelist};
     #format {cuelist} {%s\n<128> %sName<088>         %sRtg<088> %sWhen<088>  %sPri<088> %sRep<088> %sRdy<088> %sLck<088> %sCommand<088>              %sCondition<088><088>} {$cuelist}
         {@sort_colour{name}} {@sort_colour{rating}} {@sort_colour{when}} {@sort_colour{priority}} {@sort_colour{repeat}} {@sort_colour{ready}}
