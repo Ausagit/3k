@@ -100,6 +100,7 @@ COMMANDS
 #highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
 
 #gag {^HP[}
+#gag {^C:HP[}
 #gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
 #gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
 #gag {^with your own.$}
