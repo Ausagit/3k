@@ -19,6 +19,9 @@
         cq add <args>       - add a que item, args are mandatory, except for condition
                               <name>/<rating>/<when>/<priority>/<repeat>/<cmd>/<condition>
         cq remove <name>    - remove the specified que item
+        cq load [filename]  - loads the default combat que file without an argument, else the file specified, if existing
+        cq save [filename]  - saves the que to the currently used filename without an argument (shown on the top of the cq page)
+                              saves to a new file if an argument is specified. Will overwrite without warning.
     
     Injecting script:
         You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below.
