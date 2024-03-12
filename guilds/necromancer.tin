@@ -19,7 +19,8 @@ GUILD SETUP
 	gline2: add all reagents
 	
 	HP Bar config, add the elements below to your bar, make sure Hit Points is first, and the others listed always remain on the first line of your hp bar.
-	If you add more and it wraps, add a new action for it down below in this file.
+	If you add more and it wraps, you add a new action for it down below in this file.
+	
 		1 [Hit Points]
   		2 [Necro Points/Corpses]
   		3 [Undead Follower/Coffin]
@@ -37,6 +38,9 @@ COMMANDS
 					  If arg is supplied, arg will be executed when done instead of the default 'thisarea'
 	studyrun [arg]  - Use manually to run to the guild to donate, stock and study. If arg is supplied it is executed when done.
 	stockrun [arg]  - Use to manually run to the guild to donate and restock. If arg is supplied it is executed when done.
+	gaghp			- Gag your HP bar, at least the line that starts with HP[.
+					  NOTE: Some people may experience the HP bar trigger not firing if the HP bar is gagged.
+	ungaghp			- Ungag your HP bar.
 					  
 */
 
@@ -75,6 +79,7 @@ COMMANDS
 	#variable {nset[inventory_max]} {5};
 	#variable {nset[coins]} {10000};
 	#variable {nset[bloodmoss]} {5};
+	#variable {nset[gaghp]} {0};
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -99,8 +104,6 @@ COMMANDS
 #highlight {^The corpse is already preserved, but grabbing it anyway.} {yellow}
 #highlight {^You chant softly, casting your own soul over the fallen.} {light yellow}
 
-#gag {^HP[}
-#gag {^C:HP[}
 #gag {^The spirit touches the corpse and you watch it crystalize.  With the briefest}
 #gag {^nudge, the frozen corpse shatters, releasing the magical energy to be joined}
 #gag {^with your own.$}
@@ -148,6 +151,7 @@ COMMANDS
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_max}	{Your follower's maximum corpse capacity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_name}	{Your follower's name for use with the cud alias};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {form}			{Your necromatic form, for paths and setting configs};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {gaghp}			{Your default HP bar gag state. Ungag if things don't update};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {inventory_max}	{Your carried maximum corpse capacity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {invoke}			{Set to your default/preferred invoke dmg type};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};		
@@ -158,13 +162,13 @@ COMMANDS
 		#echo {$nsetout}
 	};
 	#else {
-		#regexp {%0} {{(bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
+		#regexp {%0} {{(gaghp|bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
 			#nop add input checking later;
 			#variable {nset[&2]} {&3};
 			#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
-			#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.}
+			#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.<088>}
 		} {
-			#echo {<258>Syntax is nset <bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins> <value>.<088>}
+			#echo {<258>Syntax is <158>nset <option> <value><258>.<088>}
 		}
 	}
 }
@@ -173,6 +177,7 @@ COMMANDS
 #alias {on_guild_login}
 {
 	startwatchdog;
+	#if {$nset[gaghp]} {gaghp} {ungaghp};
 	jump;w;home;mapgo home;
 	dungeons;
 	cq load;
@@ -185,6 +190,7 @@ COMMANDS
 #alias {on_guild_reconnect}
 {
 	startwatchdog;
+	#if {$nset[gaghp]} {gaghp} {ungaghp};
 	keep coffin;keep morgue;keep cooler;keep mask;
 	cc;
 	dungeons;
@@ -227,6 +233,20 @@ COMMANDS
 #function {check_nocturnum}
 {
 
+}
+
+#alias {gaghp}
+{
+	#gag {^HP[};
+	#gag {^C:HP[};
+	#echo {<258>HP Bar gagged. If you experience any issues with things not updating, ungag with ungaghp.<088>}
+}
+
+#alias {ungaghp}
+{
+	#ungag {^HP[};
+	#ungag {^C:HP[};
+	#echo {<258>HP Bar un-gagged.<088>}
 }
 
 #alias {a} {#send !absorb}
