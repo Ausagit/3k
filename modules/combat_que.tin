@@ -7,7 +7,14 @@
         Enable the que, 'cq on'.
         Manage the [ready] status by calling update_cooldown <name> <0/1> from actions, like the rod runes at the end of this file.
 
-    Commands:
+        Rating data is saved to .tt/3k/char/<charname>-ratings.tin
+        Que data is saved to .tt/3k/char/<charname>-<guildname>-que.tin or .tt/3k/char/<charname>-<guildname>-<filename>-que.tin
+
+    Suggested:
+	    Add guildsetup as the first command in the area's botpath variable add a guildsetup alias to your <guild>.tin file.
+	    Add 'rate run' to the alias to set the area rating based on the stepper name when you enter.
+
+    Combat Que Commands:
         cq                  - show the list
         cq ready            - show the list (ready-only lines)
         cq on               - enable the que
@@ -22,6 +29,16 @@
         cq load [filename]  - loads the default combat que file without an argument, else the file specified, if existing
         cq save [filename]  - saves the que to the currently used filename without an argument (shown on the top of the cq page)
                               saves to a new file if an argument is specified. Will overwrite without warning.
+
+    Script to automatically change rating when entering dungeons using your preconfigured list of dungeon::ratings.
+	The data is automatically saved to the file .tt/3k/char/<charname>-ratings.tin file.
+	
+    Rate Commands:
+        rate add <area> <rating>	- add/update scaler for the area
+        rate remove <area>	        - remove the area from the list
+        rate run					- change the scaler based on the configured setting and $bots[stepper]
+        rate						- show a list of configured scalers
+        rate <number>               - set a manual rating
     
     Injecting script:
         You can use script for the command, however you must not use variables directly; use the $:var_name format instead of $, see the example below.
@@ -49,6 +66,7 @@
     Todo:
         Investigate ways of resetting rating when leaving a dungeon and manually running around
 */
+
 #class {ratinglist} {kill}
 #class {combat_que} {kill}
 #class {combat_que} {open}
@@ -119,7 +137,7 @@ _cq_init
                 };
 
                 #list {combat_que} {add} {{{name}{$cdname}{rating}{&3}{when}{&4}{priority}{&5}{repeat}{&6}{cmd}{&7}{condition}{$condition}{locked}{0}{ready}{1}{enabled}{1}}};
-                #echo {<028>Combat que '$cdname' added. Note, changes are not saved automatically.<088>};
+                #echo {<028>Combat que <128>$cdname<028> added. Note, changes are not saved automatically.<088>};
 
             } {
                 #echo {<028>Syntax is:\ncq add name/rating/when/priority/repeat/command/condition<088>}
@@ -141,7 +159,7 @@ _cq_init
             } {
                 #regexp {%0} {{load ([a-zA-Z0-9_]{1,30})}} {
                     #nop valid format;
-                    #variable {cqfilename_temp} {$ses_name-$guild-%2-que.tin};
+                    #variable {cqfilename_temp} {$ses_name-$guild-&2-que.tin};
                     #variable {filename_ok} {1}
                 } {
                     #echo {<028>Filename must be a combination of letters, numbers and underscore.<088>};
@@ -156,16 +174,24 @@ _cq_init
                 #class {combat_que_list} {read} {.tt/char/$cqfilename_temp};
                 #class {combat_que_list} {size} {cuelistsize};
                 #if {$cuelistsize == 0} {
-                    #echo {<028>Combat que '$cqfilename_temp' not found.<088>};
+                    #echo {<028>Combat que <128>$cqfilename_temp<028> not found.<088>};
                     #nop recreate the empty cue list and popular from the backup;
                     _cq_init;
                     #variable {combat_que} {$cq_temp};
                 } {
                     #nop everthing is ok, cue has loaded from file;
                     #variable {cqfilename} {$cqfilename_temp};
-                    #echo {<028>Combat que '$cqfilename' loaded with.<088>};
-                };                
-                 
+                    #foreach {*combat_que[]} {index} {
+                        #variable {combat_que[$index][locked]} {0};
+                        #variable {combat_que[$index][ready]} {1}
+                    };
+                    #echo {<028>Combat que <128>$cqfilename<028> loaded.<088>};
+                    #if {$combat_que_on} {
+                        #echo {<028>Combat cue is currently <128>enabled<028>.<088>};
+                    } {
+                        #echo {<028>Combat cue is currently <018>disabled<028>.<088>};
+                    }
+                }
             }
         };
         #case "save" {
@@ -175,13 +201,19 @@ _cq_init
                     #variable {cqfilename} {$ses_name-$guild-que.tin}
                 } {
                     #nop ratain the current filename
-                }
+                };
+                #class {combat_que_list} {write} {.tt/char/$cqfilename};
+                #echo {<028>Combat que saved to <128>$cqfilename<028>.<088>}
             } {
-                #nop new filename;
-                #variable {cqfilename} {$ses_name-$guild-%2-que.tin}
-            };
-            #class {combat_que_list} {write} {.tt/char/$cqfilename};
-            #echo {<028>Combat que saved to '$cqfilename'.<088>}
+                #regexp {%0} {{save ([a-zA-Z0-9_]{1,30})}} {
+                    #nop valid format;
+                    #variable {cqfilename} {$ses_name-$guild-&2-que.tin};
+                    #class {combat_que_list} {write} {.tt/char/$cqfilename};
+                    #echo {<028>Combat que saved to <128>$cqfilename<028>.<088>}
+                } {
+                    #echo {<028>Filename must be a combination of letters, numbers and underscore.<088>};
+                }
+            }
         };
         #case "on" {
             #if {&{combat_que[]} != 0} {
@@ -204,7 +236,7 @@ _cq_init
             #if {"%2" == "on"} {
                 #variable {combat_que_manual} {1};
                 #unticker {combat_que};
-                #echo {<028>Combat que will now run manually, use 'cq run' to run it every round.<088>}
+                #echo {<028>Combat que will now run manually, use <128>cq run<028> to run it every round.<088>}
             };
             #elseif {"%2" == "off"} {
                 #variable {combat_que_manual} {0};
@@ -219,7 +251,7 @@ _cq_init
                 } {
                     #variable {combat_que_manual} {1};
                     #unticker {combat_que};
-                    #echo {<028>Combat que will now run manually, use 'cq run' to run it every round.<088>}
+                    #echo {<028>Combat que will now run manually, use <128>cq run<028> to run it every round.<088>}
                 }
             }
         };
@@ -241,27 +273,27 @@ _cq_init
             #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
                 #variable {combat_que[$index][enabled]} {1};
-                #echo {<028>Combat que '$combat_que[$index][name]' enabled.<088>}
+                #echo {<028>Combat que <128>$combat_que[$index][name]<028> enabled.<088>}
             } {
-                #echo {<028>Combat que '%2' not found.<088>}
+                #echo {<028>Combat que <128>%2<028> not found.<088>}
             }
         };
         #case "disable" {
             #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
                 #variable {combat_que[$index][enabled]} {0};
-                #echo {<028>Combat que '$combat_que[$index][name]' disabled.<088>}
+                #echo {<028>Combat que <128>$combat_que[$index][name]<028> disabled.<088>}
             } {
-                #echo {<028>Combat que '%2' not found.<088>}
+                #echo {<028>Combat que <128>%2<028> not found.<088>}
             }
         };
         #case "remove" {
             #local {index} {@get_cq_index{%2}};
             #if {$index > 0} {
-                #echo {<028>Combat que '$combat_que[$index][name]' removed. Note, changes are not saved automatically.<088>};
+                #echo {<028>Combat que <128>$combat_que[$index][name]<028> removed. Note, changes are not saved automatically.<088>};
                 #list {combat_que} {delete} {$index};
             } {
-                #echo {<028>Combat que '%2' not found.<088>}
+                #echo {<028>Combat que <128>%2<028> not found.<088>}
             }
         };
         #case "debug" {
@@ -316,7 +348,7 @@ _cq_init
             }
         };
         #default {
-            #echo {<028>Unknown command, use cq [add/remove/run/clear/debug/refresh/enable/disable]<088>}
+            #echo {<028>Unknown command, use <128>cq [add/remove/run/clear/debug/refresh/enable/disable]<088>}
         }
     }
 }
@@ -520,21 +552,6 @@ _cq_init
     }
 }
 
-/*
-	Script to automatically change rating when entering dungeons using your preconfigured list of dungeon::ratings.
-	The data is automatically saved to the file .tt/3k/char/<charname>-ratings.tin file.
-	
-	Suggested:
-	Add guildsetup as the first command in the area's botpath variable add a guildsetup alias to your <guild>.tin file.
-	Add 'rate run' to the alias.
-
-	Commands:
-	rate add <area> <rating>	- add/update scaler for the area
-	rate remove <area>	        - remove the area from the list
-	rate run					- change the scaler based on the configured setting and $bots[stepper]
-	rate						- show a list of configured scalers
-    rate <number>               - set a manual rating
-*/
 
 #class {ratinglist} {read} {.tt/char/$ses_name-ratings.tin}
 #class {ratinglist} {size} {scalerssize};
