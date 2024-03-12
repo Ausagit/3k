@@ -48,7 +48,6 @@
     
     Todo:
         Investigate ways of resetting rating when leaving a dungeon and manually running around
-        Que priority?
 */
 #class {ratinglist} {kill}
 #class {combat_que} {kill}
