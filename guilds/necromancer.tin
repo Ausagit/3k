@@ -80,6 +80,7 @@ COMMANDS
 	#variable {nset[coins]} {10000};
 	#variable {nset[bloodmoss]} {5};
 	#variable {nset[gaghp]} {0};
+	#variable {nset[circle]} {1};
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -142,6 +143,7 @@ COMMANDS
 		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {bloodmoss}		{Your desired bloodmoss stock quantity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coffin_max}		{Your coffin's maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {circle}			{Show your Circle % on the status bar};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coins}			{Number of coins to carry around after a guildrun};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {heals_low}		{If guildruns on, study when form heal < this. 0 = disable};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_desc}	{Your follower's description for use with the cud alias};		
@@ -162,7 +164,7 @@ COMMANDS
 		#echo {$nsetout}
 	};
 	#else {
-		#regexp {%0} {{(gaghp|bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
+		#regexp {%0} {{(circle|gaghp|bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
 			#nop add input checking later;
 			#variable {nset[&2]} {&3};
 			#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -791,7 +793,7 @@ COMMANDS
 
 	#if {$my[worth] < 125} {
 		#math {con_amount} {(125-$my[worth]) * 20};
-		#if {$con_amount > 200} {#variable $con_amount 200};
+		#if {$con_amount > 200} {#variable con_amount 200};
 		#send !con $con_amount
 	};
 
@@ -921,7 +923,12 @@ COMMANDS
 
 #alias {update_status_bar}
 {
-	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol})<088> %s} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$comtrance} {$onkill};
+	#if {$nset[circle]} {
+		#variable {circle_status} {${scol}CR:<258>$my[gxp]${scol}\% }
+	} {
+		#variable {circle_status} {}
+	};
+	#format {statusbar} {${scol}WO:%s${scol}\% ${scol}TP:%s ${scol}FG:%s ${scol}PR:%s ${scol}RP:%s${scol}\% ${circle_status}${scol}UF:%s${scol}\% ${scol}CC:$corpsestatus <088>$gstatus ${scol}(<add>%s${scol})<088> %s} {@colscale{$my[worth];120}} {@colscale{$my[ports][current];5}} {@colscale{$my[glamors][current];9}} {@onoffcolour{$my[prot]}} {@colscale{$my[repower];100}} {@colscale{$my[undead];100}} {$comtrance} {$onkill};
 	#line ignore #showme {$statusbar} {-6};
 }
 
@@ -1013,25 +1020,29 @@ COMMANDS
 #nop Override the alias from mip.tin to suit the changed configuration - see header notes for more details
 #alias {.mipProcessGlineNecromancer} {
 	#if {%1 == 1} {
-		#REGEX {$mip[gline][1]} {C:%d}			{#VAR {corpses[inventory]} {&1}};
-		#REGEX {$mip[gline][1]} {Worth:%d}		{#VAR {my[worth]} {&1}};
-		#REGEX {$mip[gline][1]} {Tport:%d/%d}	{#VAR {my[ports][current]} {&1};#VAR {my[ports][max]} {&2}};
-		#REGEX {$mip[gline][1]} {Sprk:%d/%d}	{#VAR {my[glamors][current]} {&1};#VAR {my[glamors][max]} {&2}};
-		#REGEX {$mip[gline][1]} {Repower:%d}	{#VAR {my[repower]}	{&1}};
-		#REGEX {$mip[gline][1]} {{Prot:(ON|OFF)}} {#VAR {my[prot]} {&2}};
-		#REGEX {$mip[gline][1]} {Circle:%f}		{#VAR {my[gxp]} {&1}};
-		#REGEX {$mip[gline][1]}	{Undead:%d}		{#VAR {my[undead]} {&1}};
-		#REGEX {$mip[gline][1]}	{SPf:%d/%d}		{#VAR {my[sp][fuse][current]} {&1};#VAR {my[sp][fuse][max]}	{&2}}
-	}; #elseif {%1 == 2} {
-		#REGEX {$mip[gline][2]} {G:%d} {#VAR {my[rg][ginseng]} {&1}};
-		#REGEX {$mip[gline][2]} {P:%d} {#VAR {my[rg][black pearl]} {&1}};
-		#REGEX {$mip[gline][2]} {W:%d} {#VAR {my[rg][spider web]} {&1}};
-		#REGEX {$mip[gline][2]} {R:%d} {#VAR {my[rg][goldenrod]} {&1}};
-		#REGEX {$mip[gline][2]} {M:%d} {#VAR {my[rg][mandrake]} {&1}};
-		#REGEX {$mip[gline][2]} {N:%d} {#VAR {my[rg][pine needle]} {&1}};
-		#REGEX {$mip[gline][2]} {S:%d} {#VAR {my[rg][nightshade]} {&1}};
-		#REGEX {$mip[gline][2]} {B:%d} {#VAR {my[rg][bloodmoss]} {&1}}
-	}; #else {
+		#regexp {$mip[gline][1]} {C:%d}				{#VAR {corpses[inventory]} {&1}};
+		#regexp {$mip[gline][1]} {Worth:%d}			{#VAR {my[worth]} {&1}};
+		#regexp {$mip[gline][1]} {Tport:%d/%d}		{#VAR {my[ports][current]} {&1};#VAR {my[ports][max]} {&2}};
+		#regexp {$mip[gline][1]} {Repower:%d}		{#VAR {my[repower]}	{&1}};
+		#regexp {$mip[gline][1]} {{Prot:(ON|OFF)}}	{#VAR {my[prot]} {&2}};
+		#regexp {$mip[gline][1]} {Circle:%d}		{#VAR {my[gxp]} {&1}};
+		#regexp {$mip[gline][1]} {Undead:%d}		{#VAR {my[undead]} {&1}};
+		#nop todo: check for other fuses;
+		#regexp {$mip[gline][1]} {SPf:%d/%d}		{#VAR {my[sp][fuse][current]} {&1};#VAR {my[sp][fuse][max]}	{&2}};
+		#nop todo: check for other form glamors;
+		#regexp {$mip[gline][1]} {Sprk:%d/%d}		{#VAR {my[glamors][current]} {&1};#VAR {my[glamors][max]} {&2}}
+	};
+	#elseif {%1 == 2} {
+		#regexp {$mip[gline][2]} {G:%d} {#VAR {my[rg][ginseng]} {&1}};
+		#regexp {$mip[gline][2]} {P:%d} {#VAR {my[rg][black pearl]} {&1}};
+		#regexp {$mip[gline][2]} {W:%d} {#VAR {my[rg][spider web]} {&1}};
+		#regexp {$mip[gline][2]} {R:%d} {#VAR {my[rg][goldenrod]} {&1}};
+		#regexp {$mip[gline][2]} {M:%d} {#VAR {my[rg][mandrake]} {&1}};
+		#regexp {$mip[gline][2]} {N:%d} {#VAR {my[rg][pine needle]} {&1}};
+		#regexp {$mip[gline][2]} {S:%d} {#VAR {my[rg][nightshade]} {&1}};
+		#regexp {$mip[gline][2]} {B:%d} {#VAR {my[rg][bloodmoss]} {&1}}
+	};
+	#else {
 		#ECHO {<171> Invalid Gline Number <088>}
 	}
 } {1}
