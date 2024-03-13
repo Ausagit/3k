@@ -778,13 +778,7 @@ COMMANDS
 			#var {corpses[coffin]} {&2}
 		}
 	};
-	#regexp {%1} {{drm(\d+)}} {
-		#var {my[powers][heal]} {&2}
-	};
-	#regexp {%1} {{alt(\d+)}} {
-		#var {my[powers][heal]} {&2}
-	};
-	#regexp {%1} {{ssh(\d+)}} {
+	#regexp {%1} {{(?:drm|alt|ssh)(\d+)}} {
 		#var {my[powers][heal]} {&2}
 	};
 
