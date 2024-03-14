@@ -36,6 +36,7 @@ COMMANDS
 	cud				- Create an undead follower using the configured name and description from nset
 	guildrun [arg]	- Used automatically or you can hit it manually to run to the guild to doante, study, restock and then restart the stepper.
 					  If arg is supplied, arg will be executed when done instead of the default 'thisarea'
+	
 	studyrun [arg]  - Use manually to run to the guild to donate, stock and study. If arg is supplied it is executed when done.
 	stockrun [arg]  - Use to manually run to the guild to donate and restock. If arg is supplied it is executed when done.
 	gaghp			- Gag your HP bar, at least the line that starts with HP[.
@@ -81,6 +82,11 @@ COMMANDS
 	#variable {nset[bloodmoss]} {5};
 	#variable {nset[gaghp]} {0};
 	#variable {nset[circle]} {1};
+	#variable {nset[hidden][teleport_1]} {0};
+	#variable {nset[hidden][teleport_2]} {0};
+	#variable {nset[hidden][teleport_3]} {0};
+	#variable {nset[hidden][teleport_4]} {0};
+	#variable {nset[hidden][teleport_5]} {0};
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
@@ -124,6 +130,13 @@ COMMANDS
 #substitute {C:D=##====<E } {}
 #substitute {^  My favor will cost you} {<218>Death tells you: <138>My favor will cost you}
 
+
+#action {^  This room is set to teleport position %1.}
+{
+	#variable {nset[hidden][teleport_%1]} {0};
+	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin}
+}
+
 #alias {nset}
 {
 	#if {"%1" == ""} {
@@ -132,7 +145,9 @@ COMMANDS
 		#format {nsetout} {%s\n<158> Setting             Value<088>} {$nsetout};
 		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
 		#foreach {*nset[%*]} {name} {
-			#format {nsetout} {%s\n <258>%-20s<088> %.55s} {$nsetout} {$name} {$nset[$name]}
+			#if {"$name" != "hidden"} {
+				#format {nsetout} {%s\n <258>%-20s<088> %.55s} {$nsetout} {$name} {$nset[$name]}
+			}
 		};
 		#echo {$nsetout}
 	};
@@ -175,9 +190,21 @@ COMMANDS
 	}
 }
 
+#nop used internally for resetting boot-long settings 
+#alias {_nset_reset}
+{
+	#variable {nset[hidden][teleport_1]} {0};
+	#variable {nset[hidden][teleport_2]} {0};
+	#variable {nset[hidden][teleport_3]} {0};
+	#variable {nset[hidden][teleport_4]} {0};
+	#variable {nset[hidden][teleport_5]} {0};
+	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin}
+}
+
 #nop called from common.tin module when you log in
 #alias {on_guild_login}
 {
+	_nset_reset;
 	startwatchdog;
 	#if {$nset[gaghp]} {gaghp} {ungaghp};
 	jump;w;home;mapgo home;
@@ -193,7 +220,7 @@ COMMANDS
 {
 	startwatchdog;
 	#if {$nset[gaghp]} {gaghp} {ungaghp};
-	keep coffin;keep morgue;keep cooler;keep mask;
+	keep coffin;keep morgue;keep cooler;keep mask;keep cocoon;
 	cc;
 	dungeons;
 	touch diamond rune;
@@ -226,15 +253,10 @@ COMMANDS
 #function {check_glamor}
 {
 	#if {$my[%1][perc] < %2 && $my[glamors][current] > 0} {
-		#variable result 1;
+		#variable result 1
 	} {
-		#variable result 0;
+		#variable result 0
 	}
-}
-
-#function {check_nocturnum}
-{
-
 }
 
 #alias {gaghp}
@@ -825,7 +847,7 @@ COMMANDS
 
 		#nop check corpse count - doante, stock, store and study if overflowing;
 		#if {$corpseruns_on == 1} {
-			#if {$corpses[coffin] >= ($nset[coffin_max]-1) && ("$freezer" != "on" || $corpses[freezer] >= 49) && ("$cooler" != "on" || $corpses[cooler] >= 49)} {
+			#if {($corpses[coffin] >= $nset[coffin_max]) && ("$freezer" != "on" || $corpses[freezer] >= 49) && ("$cooler" != "on" || $corpses[cooler] >= 49)} {
 				prep_guildrun
 			}
 		};
@@ -940,6 +962,7 @@ COMMANDS
 		#send !divvy coins
 	};
 	#if {$onkill_module} {onkillrun};
+	#if {$cocoon} {#send !fuse};
 	#delay {3} {ktrigsetup}
 }
 
