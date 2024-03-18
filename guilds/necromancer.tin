@@ -1,15 +1,24 @@
 #nop necromancer.tin
 /*
+GETTING STARTED
+	Grab all the required modules and place into .tt/3k/modules
+	Replace necromancer.tin with this one in .tt/3k/guilds
+	Add the smithy.tin bot to .tt/3k/bots
+	Follow the guild setup section below
+	Verify everhthing loads correctly on login
+	Use the nset command to configure your settings - super important!
+	Enjoy!
+
 REQUIRED MODULES
 	You need to include the common.tin module in your **character** file.
 		#read {.tt/3k/modules/common.tin}
-	Modules required (included from the common module above):
-		backpack.tin (uses by default 4 gentech backpacks)
-		combat_que.tin
-		mask.tin
-		scalers.tin
-		watchdog.tin
-		onkill.tin
+		This will read/include the following modules:
+			backpack.tin (uses by default 4 gentech backpacks)
+			combat_que.tin
+			mask.tin
+			scalers.tin
+			watchdog.tin
+			onkill.tin
 	You can use your own, or use the smithy.tin bot file
 
 GUILD SETUP
@@ -27,7 +36,7 @@ GUILD SETUP
 		4 [Memory] (drm)    Note: add alter if you are a werebeast, shapeshift if a vampire, or dream if you are a reaper/pure/lich. Only add one of the three types.
 
 COMMANDS
-	nset			- Configure various necromatic settings, 'nset help' for more details
+	nset			- Configure various necromatic settings, 'nset help' for more details.
 	cre/crd			- Enable/disable automatic corpse runs (dropoffs to Duncan)
 	gre/grd			- Enable/disable automatic guild runs (low dreams)
 	cte/ctd/ctp 	- Corpse trigger, enable/disable/enable party
@@ -40,13 +49,27 @@ COMMANDS
 	studyrun [arg]  - Use manually to run to the guild to donate, stock and study. If arg is supplied it is executed when done.
 	stockrun [arg]  - Use to manually run to the guild to donate and restock. If arg is supplied it is executed when done.
 	gaghp			- Gag your HP bar, at least the line that starts with HP[.
-					  NOTE: Some people may experience the HP bar trigger not firing if the HP bar is gagged.
-	ungaghp			- Ungag your HP bar.
+	ungaghp			- Ungag your HP bar. Ungag if you have any issues with it triggering the status updates.
+	ringson			- start using ring of light, ring of darkness for training angel rune.
+					  keep both rings in your inventory and make sure the combat cue entry is in and enabled.
+	ringlight		- swap to ring of light
+	ringdark		- swap to ring of darkness
+
+POWER STUDYING
+	npowers 							- view list the configured powers for studying
+	npowers add <name> <qty> <priority> - add a power to the list, where the priority 1 is the highest:
+	npowers remove <name>				- remove a power from the list
+	studyall							- begin studying the powers in ascending priority
+		
+	Notes:
+		A Qty over 100 will be studied in blocks of 100 automatically.
+		Name is all lowercase and must match exactly what you see in the
+		power listing. If you have the qty memorised (or more) it's skipped.
+
+		Define this action in the necromancer.tin file, adjust to suit:
+			#action {^The power, LASTPOWER, does not exist} {xx;yy;.resume;etc}
 					  
 */
-
-#nop power study module
-#read {.tt/3k/modules/necropowers.tin}
 
 #nop this file has my personal stuff in it, you can just ignore the failed read or make your own
 #read {.tt/3k/guilds/necromancer_custom.tin}
@@ -55,11 +78,8 @@ COMMANDS
 #class {necrosettings} {kill}
 #class {necromancer} {open}
 
-#class {necrosettings} {read} {.tt/char/$ses_name-nset.tin}
-#class {necrosettings} {size} {nsetsize};
-
-#if {$nsetsize == 0} {
-	#echo {Necro settings file not found, creating default.};
+#alias {_nset_reset} {
+	#echo {<258>Necromatic settings have been reset to default.<088>};
 	#class {necrosettings} {kill};
 	#class {necrosettings} {open};
 	#variable {nset[study_on]} {1};
@@ -82,6 +102,7 @@ COMMANDS
 	#variable {nset[bloodmoss]} {5};
 	#variable {nset[gaghp]} {0};
 	#variable {nset[circle]} {1};
+	#variable {nset[teleport_mem]} {3};
 	#variable {nset[hidden][teleport_1]} {0};
 	#variable {nset[hidden][teleport_2]} {0};
 	#variable {nset[hidden][teleport_3]} {0};
@@ -90,7 +111,29 @@ COMMANDS
 	#class {necrosettings} {close};
 	#class {necrosettings} {save};
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
+}
+
+#class {necrosettings} {read} {.tt/char/$ses_name-nset.tin}
+#class {necrosettings} {size} {nsetsize};
+#if {$nsetsize == 0} {
+	#echo {<258>Necromatic settings file not found!<088>};
+	_nset_reset;
 	#unvariable {nsetsize}
+}
+
+#class {necropowerslist} {kill}
+#class {necropowerslist} {read} {.tt/char/$ses_name-necropowers.tin}
+#class {necropowerslist} {size} {nplsize};
+
+#if {$nplsize == 0} {
+	#echo {Power file not found, creating default.};
+	#class {necropowerslist} {kill};
+	#class {necropowerslist} {open};
+	#variable {powerstudy} {};
+	#class {necropowerslist} {close};
+	#class {necropowerslist} {save};
+	#class {necropowerslist} {write} {.tt/char/$ses_name-necropowers.tin};
+	#unvariable {nplsize}
 }
 
 #variable {guild} {necromancer}
@@ -105,6 +148,10 @@ COMMANDS
 #variable {ringdark_on} {0}
 #variable {ktrig} {wrap/preserve get}
 #variable {low_coins} {0}
+#variable {globes} {0}
+#variable {memory} {0}
+#variable {studying} {0}
+#variable {nset_reset_count} {0}
 
 #highlight {^You prepare the corpse with magical energies and store it away.} {yellow}
 #highlight {^You prepare the corpse with your innate, necromantic energies.} {yellow}
@@ -130,20 +177,12 @@ COMMANDS
 #substitute {C:D=##====<E } {}
 #substitute {^  My favor will cost you} {<218>Death tells you: <138>My favor will cost you}
 
-
-#action {^  This room is set to teleport position %1.}
-{
-	#variable {nset[hidden][teleport_%1]} {0};
-	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin}
-}
-
 #alias {nset}
 {
 	#if {"%1" == ""} {
 		#local {nsetout} {};
-		#format {nsetout} {<258>------------------------------------------------------------------------------<088>} {$nsetout};
-		#format {nsetout} {%s\n<158> Setting             Value<088>} {$nsetout};
-		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
+		#format {nsetout} {<158> Setting             Value<088>} {$nsetout};
+		#format {nsetout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$nsetout};
 		#foreach {*nset[%*]} {name} {
 			#if {"$name" != "hidden"} {
 				#format {nsetout} {%s\n <258>%-20s<088> %.55s} {$nsetout} {$name} {$nset[$name]}
@@ -151,13 +190,25 @@ COMMANDS
 		};
 		#echo {$nsetout}
 	};
+	#elseif {"%1" == "reset"} {
+		#if {$nset_reset_count == 0} {
+			#echo {<258>Are you sure you wish to reset your necromatic settings?\nType <158>nset reset<258> again within 10 seconds to confirm.<088>};
+			#variable {nset_reset_count} {1};
+			#delay {nset_reset} {
+				#variable {nset_reset_count} {0};
+				#echo {<258>Necromatic settings reset period has timed out.<088>}
+			} {10}
+		} {
+			#variable {nset_reset_count} {0};
+			_nset_reset
+		}				
+	};
 	#elseif {"%1" == "help"} {
 		#local {nsetout} {};
-		#format {nsetout} {<258>------------------------------------------------------------------------------<088>} {$nsetout};
-		#format {nsetout} {%s\n<158> Setting              Description<088>} {$nsetout};
-		#format {nsetout} {%s\n<258>------------------------------------------------------------------------------<088>} {$nsetout};
+		#format {nsetout} {<158> Setting              Description<088>} {$nsetout};
+		#format {nsetout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$nsetout};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {bloodmoss}		{Your desired bloodmoss stock quantity};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coffin_max}		{Your coffin's maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coffin_max}		{Your coffin's max corpse capacity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {circle}			{Show your Circle % on the status bar};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {coins}			{Number of coins to carry around after a guildrun};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {heals_low}		{If guildruns on, study when form heal < this. 0 = disable};
@@ -165,52 +216,100 @@ COMMANDS
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_enter}	{Your follower's enter message for use with the cud alias};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_exit}	{Your follower's exit message for use with the cud alias};		
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_gender}{Your follower's gender for use with the cud alias};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_max}	{Your follower's maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_max}	{Your follower's max corpse capacity};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {follower_name}	{Your follower's name for use with the cud alias};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {form}			{Your necromatic form, for paths and setting configs};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {gaghp}			{Your default HP bar gag state. Ungag if things don't update};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {inventory_max}	{Your carried maximum corpse capacity};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {inventory_max}	{Your max corpse capacity, help prevent overburden};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {invoke}			{Set to your default/preferred invoke dmg type};
-		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};		
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {ktrig_on}		{Handle corpses using the ktrig vaf instead of qtrance};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {reset}			{Reset all settings to their defaults};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note1}	{Roomnote for your 1st corpse stash for auto restocking};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {stash_note2}	{Roomnote for your 2nd corpse stash for auto restocking};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {study_on}		{Turn on\/off study runs, respect\/ignore heals_low};
+		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {teleport_mem}	{Your number of teleport memory positions};
 		#format {nsetout} {%s\n <258>%-20s<088> %s} {$nsetout} {winch_on}		{Use the rolm for guildruns instead of running};
 		#echo {$nsetout}
 	};
 	#else {
-		#regexp {%0} {{(circle|gaghp|bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) (.+)}} {
-			#nop add input checking later;
-			#variable {nset[&2]} {&3};
-			#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin};
-			#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.<088>}
+		#regexp {%0} {{(teleport_mem|circle|gaghp|bloodmoss|winch_on|ktrig_on|study_on|invoke|follower_name|follower_gender|follower_desc|follower_enter|follower_exit|follower_max|coffin_max|inventory_max|form|heals_low|stash_note1|stash_note2|coins) ([a-zA-Z0-9\._\'\s\-]+)}} {
+			#regexp {&3} {{@_nset_format{&2}}} {
+				#if {"&3" == "clear"} {
+					#nop for freeform text entries, they can be cleared with the clear argument;
+					#variable {nset[&2]} {};
+					#echo {<258>Necromatic setting <158>&2<258> has been <158>cleared<258>.<088>}
+				} {
+					#variable {nset[&2]} {&3};
+					#echo {<258>Necromatic setting <158>&2<258> set to <158>&3<258>.<088>}
+				};
+				_nset_save;
+			} {
+				#echo {<258>Invalid nset value <158>&3<258> for <158>&2<258>.<088>}
+			}			
 		} {
 			#echo {<258>Syntax is <158>nset <option> <value><258>.<088>}
 		}
 	}
 }
 
+#function {_nset_format}
+{
+	#if {"%1" == "circle" || "%1" == "gaghp" || "%1" == "ktrig_on" || "%1" == "study_on" || "%1" == "winch_on"} {
+		#nop 0-1;
+		#variable result ([0-1])
+	};
+	#elseif {"%1" == "bloodmoss" || "%1" == "inventory_max" || "%1" == "coffin_max"} {
+		#nop 1-999;
+		#variable result ([1-9][0-9]{0,2})
+	};
+	#elseif {"%1" == "heals_low"} {
+		#nop 0-999;
+		#variable result ([0-9]{0,3})
+	};
+	#elseif {"%1" == "coins"} {
+		#nop 1 to 999999;
+		#variable result ([1-9][0-9]{0,5})
+	};
+	#elseif {"%1" == "form"} {
+		#variable result (lich|pure|reaper|were|vampire)
+	};
+	#elseif {"%1" == "follower_gender"} {
+		#variable result (male|female|neuter)
+	};
+	#elseif {"%1" == "invoke"} {
+		#variable result (edged|crushing|cold|flame|psionic|lightning|corrosion|virulence|power|light)
+	};
+	#else {
+		#nop text;
+		#variable result (.+)
+	}
+}
+
 #nop used internally for resetting boot-long settings 
-#alias {_nset_reset}
+#alias {_nset_clear}
 {
 	#variable {nset[hidden][teleport_1]} {0};
 	#variable {nset[hidden][teleport_2]} {0};
 	#variable {nset[hidden][teleport_3]} {0};
 	#variable {nset[hidden][teleport_4]} {0};
 	#variable {nset[hidden][teleport_5]} {0};
+	_nset_save
+}
+
+#alias {_nset_save}
+{
 	#class {necrosettings} {write} {.tt/char/$ses_name-nset.tin}
 }
 
 #nop called from common.tin module when you log in
 #alias {on_guild_login}
 {
-	_nset_reset;
+	_nset_clear;
 	startwatchdog;
 	#if {$nset[gaghp]} {gaghp} {ungaghp};
 	jump;w;home;mapgo home;
 	dungeons;
-	cq load;
-	cq on;
+	cq load;cq on;
 	cip;hp;gs;
 	#delay {4} {ktrigsetup}
 }
@@ -220,14 +319,24 @@ COMMANDS
 {
 	startwatchdog;
 	#if {$nset[gaghp]} {gaghp} {ungaghp};
+	#nop keep all these items to enable/disable scripts for them;
 	keep coffin;keep morgue;keep cooler;keep mask;keep cocoon;
 	cc;
 	dungeons;
 	touch diamond rune;
-	cq load;
-	cq on;
+	cq load;cq on;
 	hp;gs;
 	#delay {4} {ktrigsetup}
+}
+
+#alias {on_kshield_equip}
+{
+	#send !repeat combat/bash/0/0
+}
+
+#alias {on_kshield_remove}
+{
+	#send !repeat off
 }
 
 #nop setup combat que - no longer required but maintained for backup
@@ -287,17 +396,6 @@ COMMANDS
 #alias {ng} {#send !necrogram}
 #alias {com} {#send !chat}
 #alias {comm} {#send !chat}
-#alias {tp} {#send !teleport}
-#alias {tp1} {#send !teleport 1}
-#alias {tp2} {#send !teleport 2}
-#alias {tp3} {#send !teleport 3}
-#alias {tp4} {#send !teleport 4}
-#alias {tp5} {#send !teleport 5}
-#alias {ts1} {#send !teleport set 1}
-#alias {ts2} {#send !teleport set 2}
-#alias {ts3} {#send !teleport set 3}
-#alias {ts4} {#send !teleport set 4}
-#alias {ts5} {#send !teleport set 5}
 #alias {ka} {#send !kill a}
 #alias {kb} {#send !kill b}
 #alias {kc} {#send !kill c}
@@ -440,18 +538,20 @@ COMMANDS
 	mapgo home;keep all
 }
 
+#nop called right before the watchdog tries to resume
 #alias {on_watchdog_resume}
 {
 	#if {$ringdark_on} {ringlight}
 }
 
+#nop handle lord stanley's cup hockey fan corpses
 #alias {on_hockey_fan}
 {
 	#if {$ringdark_on} {
 		#local {go_dark} {1};
 		ringlight;
 	};
-	#if {$my[gp1][perc] > 95 && $my[hp][perc] < 100}
+	#if {$my[gp1][perc] == 100 && $my[hp][perc] < 100}
 	{
 		#send !qtrance preserve/absorb prime
 	} {
@@ -462,6 +562,7 @@ COMMANDS
 	}
 }
 
+#nop called from steppers at the very start to configure things
 #alias {guildsetup}
 {
 	.stop;
@@ -487,6 +588,7 @@ COMMANDS
 	}
 }
 
+#nop start the corpse store process at duncan
 #alias {storeall}
 {
 	=summon;
@@ -548,9 +650,9 @@ COMMANDS
 	#variable {low_coins} {0};
 }
 
+#nop restock run betwen steppers using smithy.tin - resume safe
 #alias {startrun}
 {
-	#nop restock run betwen steppers using smithy.tin - resume safe;
 	.stop;home;
 	#delay {0.5} {guildrun .resume}
 }
@@ -637,6 +739,26 @@ COMMANDS
 
 }
 
+#alias {stash1}
+{
+	#if {"$nset[stash_note1]" != ""} {
+		go $nset[stash_note1];
+		corpse_stash;
+	} {
+		#echo {<258>Stash skipped as <158>stash_note1<258> has not been nset.<088>}
+	}
+}
+
+#alias {stash2}
+{
+	#if {"$nset[stash_note2]" != ""} {
+		go $nset[stash_note2];
+		corpse_stash;
+	} {
+		#echo {<258>Stash skipped as <158>stash_note2<258> has not been nset.<088>}
+	}
+}
+
 #nop work in progress
 #alias {corpse_stash}
 {
@@ -646,9 +768,15 @@ COMMANDS
 		=drop all;
 		#5 mpp;
 		unkeep all corpse;
-		#4 {get all;put all in box}
+		#5 {get all;put all in box};
+		mask on;
+		on_corpses_stashed;
+		#delay {3} {ktrigsetup}
 	}
 }
+
+#nop override this alias to perform a custom action
+#alias {on_corpses_stashed} { } {9}
 
 #nop directions to the form libraries from RR
 #alias {form_study}
@@ -674,32 +802,6 @@ COMMANDS
 		}
 	};
 	studyall
-}
-
-#nop the study module attempts to study LASTPOWER, which fails and this action catches it and resumes movement
-#action {^The power, LASTPOWER, does not exist}
-{
-	#switch {"$nset[form]"} {
-		#case "lich" {
-			w;w;enter gate;u;s;s;sw;u;e;u;#5 e
-		};
-		#case "pure" {
-
-		};
-		#case "vampire" {
-
-		};
-		#case "were" {
-			e;ne;path;se;se;d;n;nw;ne;ne;e;u;#5 e
-		};
-		#case "reaper" {
-
-		};
-		#default {
-			n;#5 e
-		}
-	};	
-	end_run
 }
 
 #alias {on_repower}
@@ -742,6 +844,55 @@ COMMANDS
 #action {^  You are only able to conjure %1 undead per repower master} {update_cooldown conjure 0}
 #action {^  You must have at least one %1 to invoke a soulbind master} {update_cooldown soulbind 0}
 #action {^  You have already invoked a soulbind this repower master} {update_cooldown soulbind 0}
+
+#nop teleport helpers
+#alias {tp}  {teleport}
+#alias {tpl} {teleport list}
+#alias {tp1} {teleport 1}
+#alias {tp2} {teleport 2}
+#alias {tp3} {teleport 3}
+#alias {tp4} {teleport 4}
+#alias {tp5} {teleport 5}
+#alias {ts1} {#send !teleport set 1}
+#alias {ts2} {#send !teleport set 2}
+#alias {ts3} {#send !teleport set 3}
+#alias {ts4} {#send !teleport set 4}
+#alias {ts5} {#send !teleport set 5}
+#alias {teleport}
+{
+	#variable {teleport_recall} {0};
+
+	#regexp {%0} {^%d$} {
+		#if {&1 > 0 && &1 <= $nset[teleport_mem]} {
+			#variable {teleport_recall} {&1}
+		}
+	};
+	#send !teleport %0
+}
+
+#action {^  This room is set to teleport position %1.}
+{
+	#variable {nset[hidden][teleport_%1]} {$roomvnum};
+	_nset_save;
+	#delay {0} {#echo {<258>You set room <158>$roomvnum<258> for teleport position <158>%1<258>.<088>}}
+}
+
+#action {^Visions of the guild appear first in your mind, then reality...}
+{
+	#nop this is the default vnum for the receiving room, change if yours is different;
+	#map go 7549
+}
+
+#action {^The illusions clear from your mind and you find yourself there.}
+{
+	#if {$teleport_recall > 0 && $nset[hidden][teleport_$teleport_recall] > 0}
+	{
+		#map go $nset[hidden][teleport_$teleport_recall];
+		#variable {teleport_recall} {0};
+		#delay {0} {#echo {<258>You recall room <158>$roomvnum<258> for teleport position <158>$teleport_recall<258>.<088>}}
+		
+	}
+}
 
 
 #action {^%1 pokes you in the ribs}
@@ -794,7 +945,7 @@ COMMANDS
 		#var {corpses[follower]} {&3};
 		#var {corpses[coffin]} {&4}
 	} {
-		#regexp {%1} {{Undead\[none\/(\d+)c\]}} {
+		#regexp {%1} {{Undead\[(?:\w+)\/(\d+)c\]}} {
 			#var {follower} {off};
 			#var {corpses[follower]} {0};
 			#var {corpses[coffin]} {&2}
@@ -837,27 +988,35 @@ COMMANDS
 
 		#nop check reagents - doante, stock and study if low;
 		#if {$my[rg][ginseng] < 50 || $my[rg][goldenrod] < 50} {
+			#echo {<258>---> Starting guild run for <158>reagents<258>.<088>};
 			prep_guildrun
 		};
 
 		#nop check dreams remaining - doante, stock and study if low;
 		#if {$nset[study_on] == 1 && $nset[heals_low] > 0 && $my[powers][heal] < $nset[heals_low]} {
+			#echo {<258>---> Starting guild run for <158>dream/alter/shapeshift<258>.<088>};
 			prep_guildrun
 		};
 
 		#nop check corpse count - doante, stock, store and study if overflowing;
 		#if {$corpseruns_on == 1} {
+			#nop check for corpse donate to guild;
 			#if {($corpses[coffin] >= $nset[coffin_max]) && ("$freezer" != "on" || $corpses[freezer] >= 49) && ("$cooler" != "on" || $corpses[cooler] >= 49)} {
+				#echo {<258>---> Starting guild run for <158>corpse drop-off<258>.<088>};
 				prep_guildrun
 			}
 		};
-		#elseif {$corpseruns_on == 2 && @storedcorpses{} < 10} {
-			#nop corpse pickup;
-			#nop prep_guildrun
+		#elseif {$corpseruns_on == 2} {
+			#nop check for corpse stashing (pickup or dropoffs);
+			#if {($corpses[coffin] >= $nset[coffin_max]) && ("$freezer" != "on" || $corpses[freezer] >= 49) && ("$cooler" != "on" || $corpses[cooler] >= 49)} {
+				#echo {<258>---> Starting guild run for <158>corpse-pickup<258>.<088>};
+				#nop prep_guildrun
+			}
 		};
 
 		#nop if the last con failed due to no coins, prep a guildrun;
 		#if {$low_coins == 1} {
+			#echo {<258>---> Starting guild run for <158>low coins<258>.<088>};
 			prep_guildrun
 		}
 	};
@@ -866,6 +1025,7 @@ COMMANDS
 		update_cooldown prime 0;
 	};
 
+	#nop get the bot step position and length for displaying on the bottom bars;
 	#path get length path_len;
 	#path get position path_pos
 }
@@ -892,6 +1052,7 @@ COMMANDS
 	}
 }
 
+#nop if a guildrun has been initiated, cancel it with this alias
 #alias {cancel_guildrun}
 {
 	onk clear;
@@ -937,6 +1098,7 @@ COMMANDS
 	#if {$mip[round] == 0} {update_status_bar};
 }
 
+#nop updated primarily from the HP bar trigger, or when a mip update happens outside of combat
 #alias {update_status_bar}
 {
 	#if {$nset[circle]} {
@@ -950,15 +1112,19 @@ COMMANDS
 
 #alias {corpsetrig}
 {
-	#nop corpse gathering handled by ktrig, do everything else here;
-	#if {$nset[ktrig_on] == 0} {
-		#send !qtrance $ktrig
+	#if {$combat_que_on} {
+		#nop unlock any comabt que abilities that are once per fight;
+		cq refresh
 	};
-	#if {$combat_que_on} {cq refresh};
 	#if {$corpsetrig_on} {
+		#if {$nset[ktrig_on] == 0} {
+			#nop ktrig is not being used, so handle it with qtrance here;
+			#send !qtrance $ktrig
+		};
 		#if {$corpsetrig_on == 2} {#send !divvy coins} {#send !get coins};
 		#if {$backpack_module} {stacknext} {#send !get all}
 	} {
+		#nop corpse trig off, send a divvy as it will unidle, and is semi useful;
 		#send !divvy coins
 	};
 	#if {$onkill_module} {onkillrun};
@@ -1006,6 +1172,7 @@ COMMANDS
 	}
 }
 
+#nop restock regents up to 999 each or $nset[bloodmoss] using mip data from cconfigure
 #alias {stockall}
 {
 	#foreach {*my[rg][%*]} {reagent} {
@@ -1063,5 +1230,180 @@ COMMANDS
 		#ECHO {<171> Invalid Gline Number <088>}
 	}
 } {1}
+
+#nop alias for configuring the npowers listing for automated power studying
+#alias {npowers}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#regexp {%0} {{add ([a-zA-Z\s]+) ([1-9][0-9]{0,2}) ([0-9]{1,6})}} {
+				#local {cdname} {};
+                #format {cdname} {%l} {&2};
+				#if {"$cdname" == "diurnum"} {
+					#nop always use the nocturnum variant of this power;
+					#variable {cdname} {nocturnum};
+					#echo {<258>Using nocturnum name variant instead.<088>}
+				};
+				#local {index} {@get_np_index{$cdname}};
+                #if {$index != 0} {
+                    #nop delete the existing entry and replace it;
+                    #list {powerstudy} {delete} {$index}
+                };
+				#list {powerstudy} {add} {{{name}{$cdname}{quantity}{&3}{priority}{&4}}};
+				#class {necropowerslist} {write} {.tt/char/$ses_name-necropowers.tin};
+				#echo {<258>Power $cdname x &3 added, priority &4.<088>}
+			} {
+				#echo {<258>Syntax is 'npowers add <name> <quantity> <priority>'<088>}
+			}
+		};
+		#case "remove" {
+			#regexp {%0} {{remove ([a-zA-Z\s]+)}} {
+				#local {cdname} {};
+				#format {cdname} {%l} {&2};
+				#local {index} {@get_np_index{$cdname}};
+				#if {$index > 0} {
+					#list {powerstudy} {delete} {$index};
+					#echo {<258>Power &2 removed from npowers list.<088>}
+				} {
+					#echo {<258>That power is not on your npowers list.<088>}
+				}
+			} {
+				#echo {<258>Syntax is 'npowers remove <name>'.<088>}
+			}
+		};
+		#case "" {
+			#local {header} {};
+			#local {powerout} {};
+            #format {powerout} {<158> Power                Qty Priority<088>} {$powerout};
+			#format {powerout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$powerout};
+			#if {&{powerstudy[]} == 0} {
+				#format {powerout} {%s\n You have no configured powers to study} {$powerout}
+			} {
+				#list {powerstudy} {indexate} {priority};
+				#list {powerstudy} {order};
+				#nop #list {powerstudy} {reverse};
+				#foreach {*powerstudy[%*]} {index} {
+						#format {powerout} {%s\n %-20s %+3s %s} {$powerout} {$powerstudy[$index][name]} {$powerstudy[$index][quantity]} {$powerstudy[$index][priority]}
+				};
+			};
+			#echo {$powerout}
+		}
+	}
+}
+
+#nop not used for anything currently
+#action {^You currently have %1/%2 open memory globes}
+{
+	#variable {globes[open]} {%1};
+	#variable {globes[max]} {%2};
+}
+
+#nop main alias to start the study process and capturing the curently studied quantities
+#alias {studyall}
+{
+	#if {&{powerstudy[]} == 0} {
+		#echo {<258>You have no configured powers to study, use the <158>npowers<258> command.<088>}
+	} {
+		#variable {studying} {1};
+		#if {"%1" != ""} {
+			#variable {studying} {2}
+		};
+		#nop    daemon graft(3):   3    9       di/nocturnum(3): 114  342;
+		#action {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}} {
+			#variable {memory[%%2]} {%%3};
+			#if {%%6} {
+				#variable {memory[%%5]} {%%6}
+			}
+		};
+		#nop show the powers page to scrape the data with the above action;
+		#delay {0.5} {#send !powers}
+	}
+}
+
+#nop triggered from the last line of the powers command to complete the process
+#action {^For more on any power, type 'info <power>'}
+{
+	#unaction {{(?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+)[\s]+[\d]+((?:[\s]+)(?:[a-z]+\/)?([a-z\s]+)\([0-9]\):[\s]+(\d+))?}};
+
+	#if {$studying} {
+		_necstudy
+	}
+}
+
+#alias {_necstudy}
+{
+	#list {powerstudy} {indexate} {priority};
+	#list {powerstudy} {order};
+
+	#foreach {*powerstudy[]} {index} {
+		#local {name} {$powerstudy[$index][name]};
+		#local {qty} {$powerstudy[$index][quantity]};
+		#local {tostudy} {0};
+
+		#if {$memory[$name]} {
+			#if {$memory[$name] < $qty} {
+				#math {tostudy} {$qty - $memory[$name]}
+			} {
+				#nop no studying necessary
+			}
+		} {
+			#variable {tostudy} {$qty}
+		};
+
+		#while {$tostudy > 0} {
+			#if {$tostudy > 100} {
+				#send !study $name 100
+			} {
+				#send !study $name $tostudy
+			};
+			#math {tostudy} {$tostudy - 100}
+		}
+	};
+
+	#if {$studying != 2} {
+		#send !study LASTPOWER;
+	};
+	#variable {studying} {0}
+}
+
+#nop the study module attempts to study LASTPOWER, which fails and this action catches it and resumes movement
+#action {^The power, LASTPOWER, does not exist}
+{
+	#nop head back to the RR from the form's library;
+	#switch {"$nset[form]"} {
+		#case "lich" {
+			w;w;enter gate;u;s;s;sw;u;e;u;#5 e
+		};
+		#case "pure" {
+
+		};
+		#case "vampire" {
+
+		};
+		#case "were" {
+			e;ne;path;se;se;d;n;nw;ne;ne;e;u;#5 e
+		};
+		#case "reaper" {
+
+		};
+		#default {
+			n;#5 e
+		}
+	};
+	#nop continue the guildrun;
+	end_run
+}
+
+#function {get_np_index}
+{
+    #if {&{powerstudy[]} != 0} {
+        #local {cdname} {};
+        #format {cdname} {%l} {%1};
+        #list {powerstudy} {indexate} {name};
+        #list {powerstudy} {find} {$cdname} {result}
+    } {
+        #variable {result} {0}
+    }
+}
 
 #class {necromancer} {close}
