@@ -9,6 +9,7 @@
 
 #variable {corpsetrig_on} {1}
 #variable {freezer} {off}
+#variable {cocoon} {0}
 #variable {resume_action} {.resume}
 
 #nop change this to the room vnum that you usually anchor in
@@ -62,17 +63,21 @@
 #alias {on_guild_login} { } {9}
 #alias {on_char_reconnect} { } {9}
 #alias {on_guild_reconnect} { } {9}
-#action {^3Kingdoms welcomes you back from linkdeath} {#delay {1} {on_reconnect}}
-#action {^3Kingdoms welcomes you!} {#delay {1} {on_login}}
-#alias {on_Login}
+
+#action {^3Kingdoms welcomes you!}
 {
-	on_char_login;
-	#delay {1} {on_guild_login}
+	#delay {1} {
+		on_char_login;
+		#delay {1} {on_guild_login}
+	}
 }
-#alias {on_reconnect}
+
+#action {^3Kingdoms welcomes you back from linkdeath}
 {
-	on_char_reconnect;
-	#delay {1} {on_guild_reconnect}
+	#delay {1} {
+		on_char_reconnect;
+		#delay {1} {on_guild_reconnect}
+	}
 }
 
 #action {^{You keep \*?Tech Ultra-Cooler.}} {#variable cooler on}
@@ -110,17 +115,30 @@
 }
 
 #nop mythic knight's shield
-#nop override these aliases by defining them elsewhere
-#alias {on_kshield_equip} {#send !repeat combat/bash/0/0} {9}
-#alias {on_kshield_remove} {#send !repeat off} {9}
-#action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip;#gag {backward.$}} {9}
-#action {^You carefully remove the shield} {on_kshield_remove;#ungag {backward.$}} {9}
-#action {^There is no reason to 'bash' here} {on_kshield_remove} {9}
+#nop override these aliases by defining them elsewhere and add code to repeat/autocombat bash
+#alias {on_kshield_equip} { } {9}
+#alias {on_kshield_remove} { } {9}
+
+#action {^Your training from the Grand Master Knight reminds you to train 'bash'}
+{
+	on_kshield_equip;
+	#gag {backward.$}
+}
+#action {^You carefully remove the shield}
+{
+	on_kshield_remove;
+	#ungag {backward.$}
+}
+#action {^There is no reason to 'bash' here}
+{
+	on_kshield_remove;
+	#ungag {backward.$}
+}
 
 #nop lord stanley's cup
-#nop override this alias by defining it elsewhere and setting the priority to {1}
+#nop override this alias by defining it elsewhere
 #alias {on_hockey_fan} {#if {$mask_module} {guild_reclaim}} {9}
-#action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan} {9}
+#action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan} {1}
 
 #nop supplements to 'cbrief on mo'
 #gag {^%* tickled %* in the stomach}
@@ -155,3 +173,14 @@
 
 #nop run to a room vnum
 #alias {go2} {#map run %1}
+
+#action {^{You keep \*?A sticky cocoon {.*}.*\(worn}}
+{
+	#nop automatically turn the mask on when you keep it and it's worn;
+	#variable {cocoon} {1}
+} {1}
+
+#action {^You have no cocoon.}
+{
+	#variable {cocoon} {0};
+} {1}
