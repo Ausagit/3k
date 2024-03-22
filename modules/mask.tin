@@ -85,6 +85,11 @@
 	#nop define these aliases in your guild file to fire when the entire process is complete
 } {9}
 
+#alias {on_mask_cloned}
+{
+	#nop define these aliases in your guild file to fire when the entire process is complete
+} {9}
+
 #alias {mask}
 {
     #switch {"%1"} {
@@ -113,6 +118,10 @@
 				#send !trace glyph
 			}
         };
+		#case "active" {
+			mask all;
+			#send !trace glyph
+		};
 		#case "debug" {
 			#if {$mask_debugging} {
 				#variable mask_debugging 0;
@@ -191,6 +200,7 @@
 		#nop reclaim the two corpses and reduce the cleanup tracking by one;
 		guild_reclaim 2;
 		#math {cleanup_qty} {$cleanup_qty - 1};
+		on_mask_cloned 2;
 		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
 	} {
 		#variable {mask_check} {0}
@@ -205,6 +215,7 @@
 		#nop reclaim the single corpses and reduce the cleanup tracking by one;
 		guild_reclaim 1;
 		#math {cleanup_qty} {$cleanup_qty - 1};
+		on_mask_cloned 1;
 		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
 	} {
 		#variable {mask_check} {0}
@@ -333,7 +344,7 @@
 	#if {$sel_qty > 0 && $corpses[inventory] > 0} {
 		#if {$corpses[inventory] >= $sel_qty} {
 			_mask_debug MASK: selecting inventory $sel_qty;
-			#$sel_qty {#send !drop corpse};
+			#$sel_qty {#send !unkeep corpse;#send !drop corpse};
 			guild_reclaim $sel_qty;
 			#local {sel_qty} {0}
 		} {
@@ -372,7 +383,7 @@
 			#$sel_qty {recharge;reclaim}
 		};
 		#case "necromancer" {
-			#$sel_qty {preserve get;absorb}
+			#$sel_qty {preserve;absorb}
 		};
 		#case "fremen" {
 			#$sel_qty {reclaim}
@@ -406,6 +417,9 @@
 		};
 		#case "mage" {
 			#$sel_qty {cast corpse blast}
+		};
+		#case "juggernaut" {
+			#$sel_qty {fdeneer}
 		};
 		#default {
 			#echo {** Unhandled guild type in mask.tin! **};
