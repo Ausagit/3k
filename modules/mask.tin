@@ -419,7 +419,7 @@
 			#$sel_qty {cast corpse blast}
 		};
 		#case "juggernaut" {
-			#$sel_qty {fdeneer}
+			#$sel_qty {fdeener}
 		};
 		#default {
 			#echo {** Unhandled guild type in mask.tin! **};
