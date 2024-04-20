@@ -1,0 +1,59 @@
+#class {bot} {open}
+
+#var {no_loop} {1}
+#var {no_home} {1}
+#var {hardmode} {0}
+#var {vacuum} {0}
+#var {no_player} {1}
+
+#alias {bl_remove_magic}
+{
+    dispell;
+    #delay {2} {..}
+}
+
+#alias {bl_remove_blocker}
+{
+    #5 {turn undead};
+    #delay {2} {..}
+}
+
+#alias {bl_remove_boulder}
+{
+    smash boulder;
+    #delay {2} {..}
+}
+
+#action {^You attempt to pass, but the massive guardian blocks your passage}
+{
+    #map undo
+}
+
+#action {^The elven shade pushes you away from the passage downward}
+{
+    #map undo
+}
+
+#action {^Sight returns to your eyes, darkness becomes light again}
+{
+    look
+}
+
+#variable {botpath} {guildsetup;enter;s;s;e;e;e;n;n;w;w;e;e;s;s;w;bl_remove_magic;d;sw;se;e;ne;nw;se;sw;bl_remove_blocker;d;sw;sw;e;e;nw;se;w;bl_remove_boulder;d;w;w;w;sw;sw;e;e;e;ne;ne}
+
+#action {^=M= {A young ghost elf|A fat ghost elf|A frightened ghost elf|A scared ghost elf|A thin ghost elf|A loyal hound|A huge elven skeleton|A nimble elven archer}} {
+    #switch {"%1"} {
+		#case {"A young ghost elf"} {#var mobname elf};
+        #case {"A fat ghost elf"} {#var mobname elf};
+        #case {"A frightened ghost elf"} {#var mobname elf};
+        #case {"A scared ghost elf"} {#var mobname elf};
+        #case {"A thin ghost elf"} {#var mobname elf};
+        #case {"A loyal hound"} {#var mobname hound};
+        #case {"A huge elven skeleton"} {#var mobname skeleton};
+        #case {"A nimble elven archer"} {#var mobname archer}
+    };
+	_check_mob
+}
+
+#class {bot} {close}
+
