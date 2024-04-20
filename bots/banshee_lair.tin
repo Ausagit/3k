@@ -3,7 +3,7 @@
 #var {no_loop} {1}
 #var {no_home} {1}
 #var {hardmode} {0}
-#var {vacuum} {1}
+#var {vacuum} {0}
 #var {no_player} {1}
 
 #alias {bl_remove_magic}
@@ -14,7 +14,7 @@
 
 #alias {bl_remove_blocker}
 {
-    #4 {turn undead};
+    #5 {turn undead};
     #delay {2} {..}
 }
 
@@ -56,8 +56,3 @@
 }
 
 #class {bot} {close}
-
-#nop scaler 125 level 1 elfs: 20m, hounds 10m, skeleton 20m, archer 15m, yihan 41m, two lives or more
-#nop dispell room is 27712
-#nop An elven guardian (undead) is not attackable
-#nop hounds assist
