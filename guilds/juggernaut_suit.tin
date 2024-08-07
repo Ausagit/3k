@@ -1,0 +1,390 @@
+#nop juggernaut_suit.tin
+/*
+	suit loadouts that save through logins.
+    Type 'suit help' in-game for more info.
+*/
+#class {juggernautsuit} {kill}
+#class {juggernautsuit} {open}
+
+#class {suitloadoutlist} {kill}
+#class {suitloadoutlist} {read} {.tt/char/$ses_name-suit.tin}
+#class {suitloadoutlist} {size} {lsize}
+
+#if {$lsize == 0} {
+	#echo {Suit file not found, creating default.};
+	#class {suitloadoutlist} {kill};
+	#class {suitloadoutlist} {open};
+	#variable {suitloadouts} {};
+	#class {suitloadoutlist} {close};
+	#class {suitloadoutlist} {save};
+	#class {suitloadoutlist} {write} {.tt/char/$ses_name-suit.tin};
+	#unvariable {lsize}
+}
+
+#alias {suitload} {#read {.tt/3k/guilds/juggernaut_suit.tin}}
+
+#alias {_savesuits}
+{
+	#class {suitloadoutlist} {write} {.tt/char/$ses_name-suit.tin}
+}
+
+#nop alias for configuring suit loadouts
+#alias {suit}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#regexp {%0} {{add ([a-zA-Z0-9_\-]{1,20}) (gnome|undine|elemental|sylph|salamander)}} {
+				#local {cdname} {};
+                #format {cdname} {%l} {&2};
+				#variable {suitloadouts[$cdname]} {$suitskills[template]};
+				#variable {suitloadouts[$cdname][suit]} {&3};
+				_savesuits;
+				#echo {<258>Suit loadout <158>$cdname<258> added.<088>}
+			} {
+				#echo {<258>Syntax is <158>suit add <name> <suit> <level><258>.<088>}
+			}
+		};
+		#case "remove" {
+			#if {"$suitloadouts[%2][suit]" == ""} {
+				#echo {<258>Suit loadout <158>%2<258> does not exist.<088>};
+			} {
+				#unvariable {suitloadouts[%2]};
+				#echo {<258>Suit loadout <158>%2<258> removed.<088>};
+				_savesuits;
+			}
+		};
+		#case "rename" {
+			#regexp {%0} {{rename ([a-zA-Z0-9_\-]{1,20}) to ([a-zA-Z0-9_\-]{1,20})}} {
+				#if {"$suitloadouts[&2][suit]" != ""} {
+					#if {"$suitloadouts[&3][suit]" != ""} {
+						#echo {<258>Suit loadout <158>&3<258> already exist.<088>};
+					} {
+						#variable {suitloadouts[&3]} {$suitloadouts[&2]};
+						#unvariable {suitloadouts[&2]};
+						_savesuits;
+						#echo {<258>Suit loadout <158>%2<258> renamed to <158>&3<258>.<088>};
+					}
+				} {
+					#echo {<258>Suit loadout <158>%2<258> does not exist.<088>};
+				}
+			} {
+				#echo {<258>Syntax is 'suit rename <158><from><258> to <158><name><258>'.<088>};
+			}
+		};
+		#case "copy" {
+			#regexp {%0} {{copy ([a-zA-Z0-9_\-]{1,20}) to ([a-zA-Z0-9_\-]{1,20})}} {
+				#if {"$suitloadouts[&2][suit]" != ""} {
+					#if {"$suitloadouts[&3][suit]" != ""} {
+						#echo {<258>Suit loadout <158>&3<258> already exist.<088>};
+					} {
+						#variable {suitloadouts[&3]} {$suitloadouts[&2]};
+						_savesuits;
+						#echo {<258>Suit loadout <158>%2<258> copied to <158>&3<258>.<088>};
+					}
+				} {
+					#echo {<258>Suit loadout <158>%2<258> does not exist.<088>};
+				}
+			} {
+				#echo {<258>Syntax is 'suit copy <158><from><258> to <158><name><258>'.<088>};
+			}
+		};
+		#case "set" {
+			#nop set a specific value on x suit loadout;
+			#regexp {%0} {{set ([a-zA-Z0-9_\-]{1,20}) ([a-z]{4,20}) ([a-zA-Z0-9_\-]{1,10})}} {
+				#if {"$suitloadouts[&2]" != ""} {
+					#nop it's a valid loadout name;
+					#local {se_profile} {&2};
+					#local {se_suit} {$suitloadouts[&2][suit]};
+					#local {se_var} {&3};
+					#local {se_val} {&4};
+					#if {"$suitskills[$se_suit][$se_var]" != ""} {
+						#nop it's a suit skill;
+						#if {$se_val > $suitskills[$se_suit][$se_var]} {
+							#variable {se_val} {$suitskills[$se_suit][$se_var]}
+						};
+						#variable {suitloadouts[$se_profile][$se_var]} {$se_val};
+						#echo {<258>Suit loadout <158>$se_profile<258> value for <158>$se_var<258> set to <158>$se_val<258>.<088>};
+						_savesuits
+					};
+					#elseif {"$suitskills[template][$se_var]" != ""} {
+						#nop it's a valid variable to set. TODO value validation;
+						#variable {suitloadouts[$se_profile][$se_var]} {$se_val};
+						#echo {<258>Suit loadout <158>$se_profile<258> value for <158>$se_var<258> set to <158>$se_val<258>.<088>};
+						_savesuits
+					};
+					#else {
+						#nop it's not a valid variable to set;
+						#echo {<258>That is not a valid suit variable to set.<088>}
+					}
+				} {
+					#nop invalid loadout name;
+					#echo {<258>That suit loadout does not exist.<088>}
+				}
+			} {
+				#echo {You may set the following variables:\n
+					   blowabsorption, heatcapacity, internalstructure, salvageefficiency, stimregen,\n
+					   cargotruck, heatsinks, pointdefense, stimefficiency, missileguidance, energyweapons\n
+					   missileweapons, projectileweapons, targetingcomputer, plasmafocusing, missileammo,\n
+					   projectileammo, mounttype, mountnumber, mountsize, ammonumber, enhance, transpose, level}
+			}
+		};
+		#case "load" {
+			#if {"%2" == "" || "$suitloadouts[%2][suit]" == ""} {
+				#echo {<258>You must specify the name of the profile to load.<088>}
+			} {
+				#nop starting from the upgrade room;
+				#local {suitlevel} {0};
+				#math {suitlevel} {$suitloadouts[%2][level] - 1};
+				#${suitlevel} #send !upgrade;
+
+				#nop head to the tech bay;
+				s;u;s;s;e;ne;n;n;w;
+				#${suitloadouts[%2][blowabsorption]} #send !purchase blow absorption;
+				#${suitloadouts[%2][internalstructure]} #send !purchase internal structure;
+				#${suitloadouts[%2][salvageefficiency]} #send !purchase salvage efficiency;
+				#${suitloadouts[%2][cargotruck]} #send !purchase cargo truck;
+				#${suitloadouts[%2][pointdefense]} #send !purchase point defense;
+				#${suitloadouts[%2][missileguidance]} #send !purchase missile guidance;
+				#${suitloadouts[%2][missileweapons]} #send !purchase missile weapons;
+				#${suitloadouts[%2][missileammo]} #send !purchase missile ammo;
+				#${suitloadouts[%2][targetingcomputer]} #send !purchase targeting computer;
+				#${suitloadouts[%2][projectileweapons]} #send !purchase projectile weapons;
+				#${suitloadouts[%2][projectileammo]} #send !purchase projectile ammo;
+				#${suitloadouts[%2][energyweapons]} #send !purchase energy weapons;
+				#${suitloadouts[%2][plasmafocusing]} #send !purchase plasma focusing;
+				#${suitloadouts[%2][stimefficiency]} #send !purchase stim efficiency;
+				#${suitloadouts[%2][stimregen]} #send !purchase stim regen;
+				#${suitloadouts[%2][heatcapacity]} #send !purchase heat capacity;
+				#${suitloadouts[%2][heatsinks]} #send !purchase heat sinks;
+
+				#nop head to the mount shop;
+				e;s;s;sw;w;w;nw;n;n;e;
+				vbuy $suitloadouts[%2][mounttype] $suitloadouts[%2][mountnumber] $suitloadouts[%2][mountsize];
+				jset mounttype $suitloadouts[%2][mounttype];
+				jset ammotype $suitloadouts[%2][ammonumber];
+
+				#if {$suitloadouts[%2][cargotruck] > 0} {
+					#delay {4} {calltruck}
+				};
+
+				#if {"$suitloadouts[%2][mounttype]" != "energy"} {
+					#if {$suitloadouts[%2][cargotruck] > 1} {
+						jset ammobuy on;
+					} {
+						jset ammobuy off;
+						#nop head to the ammo room;
+						w;s;s;se;e;n;n;d;d;s;board;nw;w;w;nw;e;
+						buy $suitloadouts[%2][mounttype] $suitloadouts[%2][ammonumber] 1000
+					};
+					jset ammo on;
+				} {
+					jset ammobuy off;
+					jset ammo off
+				};
+
+				#send !enhance $suitloadouts[%2][enhance];
+				#nop uses the jset confugration to set the stim percentage to trigger transpose;
+				jset transpc $suitloadouts[%2][transpose];
+
+				#delay {2} {empower};
+				hp;
+			}
+		};
+		#case "help" {
+			#local {suitout} {};
+			#format {suitout} {<158> Suit Command Help<088>};
+			#format {suitout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$suitout};
+			#format {suitout} {%s\n <258>%-s<088>\n   %s} {$suitout} {load <name>}	{Load the specified loadout including systems & focus};
+			#format {suitout} {%s\n <258>%s<088>\n   %s} {$suitout} {copy <fromname> <toname>}	{Copy a loadout to another};
+			#format {suitout} {%s\n <258>%s<088>\n   %s} {$suitout} {add <name>}	{Add or update a loadout};
+			#format {suitout} {%s\n <258>%s<088>\n   %s} {$suitout} {remove <name>} {Delete the specified loadout};
+			#echo {$suitout}
+		};
+		#case "" {
+			#local {suitout}      {<258>~~Suit Profile~~ <178>~~Suit~~ <128>~~~~~~~~~Suit Tech~~~~~~~~ <118>~~~~~Weapons Tech~~~~~~ <138>~~~~~Mount~~~~~~ <148>~Other~<088>};
+			#format {suitout} {%s\n<258>Name             <178>Suit Lvl <128>BA HC IS SE SR CT HS PD SE <118>MG MW MA <168>TC PW PA <138>EW PF <138>MountType  N S A <148>Enh Tra<088>} {$suitout};
+	   		#format {suitout} {%s\n<158>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<088>} {$suitout};
+
+			#if {&{suitloadouts[]} == 0} {
+				#format {suitout} {%s\n You have no configured suit loadouts} {$suitout}
+			} {
+				#local {mltotal} {0};
+				#local {mlmode} {};
+				#foreach {*suitloadouts[%*]} {name} {
+					#format {suitout} {%s\n<258>%-16s %s%.4s <088>%+3s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %+2s %-10s %-1s %-1s %-1s %+3s %+3s} {$suitout}
+					{$name}
+					{@suitcolour{$suitloadouts[$name][suit]}}
+					{$suitloadouts[$name][suit]}
+					{$suitloadouts[$name][level]}
+					{@colscaleb{$suitloadouts[$name][blowabsorption];$suitskills[$suitloadouts[$name][suit]][blowabsorption]}}
+					{@colscaleb{$suitloadouts[$name][heatcapacity];$suitskills[$suitloadouts[$name][suit]][heatcapacity]}}
+					{@colscaleb{$suitloadouts[$name][internalstructure];$suitskills[$suitloadouts[$name][suit]][internalstructure]}}
+					{@colscaleb{$suitloadouts[$name][salvageefficiency];$suitskills[$suitloadouts[$name][suit]][salvageefficiency]}}
+					{@colscaleb{$suitloadouts[$name][stimregen];$suitskills[$suitloadouts[$name][suit]][stimregen]}}
+					{@colscaleb{$suitloadouts[$name][cargotruck];$suitskills[$suitloadouts[$name][suit]][cargotruck]}}
+					{@colscaleb{$suitloadouts[$name][heatsinks];$suitskills[$suitloadouts[$name][suit]][heatsinks]}}
+					{@colscaleb{$suitloadouts[$name][pointdefense];$suitskills[$suitloadouts[$name][suit]][pointdefense]}}
+					{@colscaleb{$suitloadouts[$name][stimefficiency];$suitskills[$suitloadouts[$name][suit]][stimefficiency]}}
+
+					{@colscaleb{$suitloadouts[$name][missileguidance];$suitskills[$suitloadouts[$name][suit]][missileguidance]}}
+					{@colscaleb{$suitloadouts[$name][missileweapons];$suitskills[$suitloadouts[$name][suit]][missileweapons]}}
+					{@colscaleb{$suitloadouts[$name][missileammo];$suitskills[$suitloadouts[$name][suit]][missileammo]}}
+					{@colscaleb{$suitloadouts[$name][targetingcomputer];$suitskills[$suitloadouts[$name][suit]][targetingcomputer]}}
+					{@colscaleb{$suitloadouts[$name][projectileweapons];$suitskills[$suitloadouts[$name][suit]][projectileweapons]}}
+					{@colscaleb{$suitloadouts[$name][projectileammo];$suitskills[$suitloadouts[$name][suit]][projectileammo]}}
+					{@colscaleb{$suitloadouts[$name][energyweapons];$suitskills[$suitloadouts[$name][suit]][energyweapons]}}
+					{@colscaleb{$suitloadouts[$name][plasmafocusing];$suitskills[$suitloadouts[$name][suit]][plasmafocusing]}}
+
+					{$suitloadouts[$name][mounttype]}
+					{$suitloadouts[$name][mountnumber]}
+					{$suitloadouts[$name][mountsize]}
+					{$suitloadouts[$name][ammonumber]}
+					{$suitloadouts[$name][enhance]}
+					{$suitloadouts[$name][transpose]}
+				}
+			};
+			#echo {$suitout}
+		}
+	}
+}
+
+#function {suitcolour}
+{
+	#switch {"%1"} {
+		#case {"gnome"} {
+			#variable result <268>
+		};
+		#case {"undine"} {
+			#variable result <228>
+		};
+		#case {"elemental"} {
+			#variable result <138>
+		};
+		#case {"sylph"} {
+			#variable result <218>
+		};
+		#case {"salamander"} {
+			#variable result <118>
+		};
+		#default {
+			#variable result <088>
+		}
+	}
+}
+
+#action {^     ----------- %* Salvage: %1 of}
+{
+	#variable {salvagegxp} {%1};
+	#delay {0.1} {#echo {<258>Salvage GXP: %1<088>}}
+}
+
+#alias {sa}
+{
+	#send !salvage $salvagegxp;
+	#delay {1} {#send y};
+	#variable {salvagegxp} {0}
+}
+
+#function {colscaleb}
+{
+	#math per {100*%1/%2};
+	#switch {1} {
+		#case {$per >= 100}	{#return <168>%1<088>};
+		#case {$per > 0}	{#return <088>%1<088>};
+		#case {$per == 0}	{#return  };
+		#default 	{#return <088>%1}
+	}
+}
+
+#variable {suitskills}
+{
+	{gnome}
+	{
+		{blowabsorption} {8}
+		{heatcapacity} {2}
+		{internalstructure} {22}
+		{salvageefficiency} {5}
+		{stimregen} {5}
+		{cargotruck} {5}
+		{heatsinks} {2}
+		{pointdefense} {1}
+		{stimefficiency} {8}
+		{missileguidance} {0}
+		{energyweapons} {0}
+		{missileweapons} {0}
+		{projectileweapons} {0}
+		{targetingcomputer} {0}
+		{plasmafocusing} {1}
+		{missileammo} {3}
+		{projectileammo} {3}
+	}
+	{salamander}
+	{
+		{blowabsorption} {2}
+		{heatcapacity} {12}
+		{internalstructure} {7}
+		{salvageefficiency} {0}
+		{stimregen} {1}
+		{cargotruck} {5}
+		{heatsinks} {10}
+		{pointdefense} {5}
+		{stimefficiency} {1}
+		{missileguidance} {6}
+		{energyweapons} {7}
+		{missileweapons} {7}
+		{projectileweapons} {7}
+		{targetingcomputer} {6}
+		{plasmafocusing} {7}
+		{missileammo} {4}
+		{projectileammo} {4}
+	}
+	{elemental}
+	{
+		{blowabsorption} {5}
+		{heatcapacity} {7}
+		{internalstructure} {15}
+		{salvageefficiency} {3}
+		{stimregen} {3}
+		{cargotruck} {5}
+		{heatsinks} {6}
+		{pointdefense} {3}
+		{stimefficiency} {4}
+		{missileguidance} {6}
+		{energyweapons} {7}
+		{missileweapons} {7}
+		{projectileweapons} {7}
+		{targetingcomputer} {6}
+		{plasmafocusing} {7}
+		{missileammo} {4}
+		{projectileammo} {4}
+	}
+	{template}
+	{
+		{blowabsorption} {0}
+		{heatcapacity} {0}
+		{internalstructure} {0}
+		{salvageefficiency} {0}
+		{stimregen} {0}
+		{cargotruck} {0}
+		{heatsinks} {0}
+		{pointdefense} {0}
+		{stimefficiency} {0}
+		{missileguidance} {0}
+		{energyweapons} {0}
+		{missileweapons} {0}
+		{projectileweapons} {0}
+		{targetingcomputer} {0}
+		{plasmafocusing} {0}
+		{missileammo} {0}
+		{projectileammo} {0}
+		{mounttype} {energy}
+		{mountnumber} {1}
+		{mountsize} {l}
+		{ammonumber} {0}
+		{enhance} {70}
+		{transpose} {90}
+		{level} {1}
+	}
+}
+
+#class {juggernautsuit} {close}

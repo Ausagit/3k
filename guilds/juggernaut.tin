@@ -1,0 +1,1369 @@
+#nop juggernaut.tin
+/*
+	Based on Inix's original jugger file.
+
+	Jugger HP bar configuration - run this hp set command first
+		hp set HP[$HP$] SP[$SP$] S[$STIM$] TS[$TSTIM$] HE[$HEAT$] HT[$HITS$] M/C[$NUKES$/$MNUKES$][$CP$/$MCP$][$RESET$] $N$Ammo[$AMMO$] SHP[$SHP$] SM[$SMD$] SA[$SMF$] SD[$SAF$] G[$GXP$]
+
+	Jugger Settings
+		Use the jset command (jset help) to configure guild options, such as powers on/off if you have/dont have access,
+		ammo details, etc.
+
+	Mech Configuration
+		Use the mech command (mech help) to create mech profiles and switch between them.
+
+	Suit Loadouts
+		Use the suit command (if you have one of the the suit reset VAFs) to load all your levels, techs, mounts, etc.
+		Only use the 'suit load' command after you have reset your GXP, switched to the suit you want and salvaged GXP.
+
+	Commands:
+		jset	- Configuration tool, see 'jset help' for more information.	
+		mech	- Mech loadout tool. See 'mech help' for more information.
+		suit	- Suit loadout tool. See 'suit help' for more information.
+		jdmg	- Juggernaut damage tracker for physical, mount, tank and point defenses dmg. Still some areas are a WIP.
+		gxp		- Gxp tracking, gxp reset to clear.
+		mammo	- Missile ammo swap tool. Results may vary if you do not have access to all the ammo types.
+					mammo			- display the list of ammo types
+					mammo poison	- swap your ammo type to biotech ammo (8) for the next reload
+					mammo fire d	- swap your ammo type to fire (default, 6) and dump remaining ammo for an immediate change
+*/
+#class {juggernautmech} {kill}
+#class {juggernaut} {kill}
+#class {juggersettings} {kill}
+#class {juggernaut} {open}
+
+#read {.tt/3k/guilds/juggernaut_mech.tin}
+#read {.tt/3k/guilds/juggernaut_suit.tin}
+
+#variable {guild} {juggernaut}
+#variable {clan} {0}
+#variable {nukes} {0}
+#variable {reset} {0}
+#variable {rod} {0}
+#variable {scol} {<bbb>}
+#variable {path_len} {0}
+#variable {path_pos} {0}
+#variable {flipbirdkill} {0}
+#variable {pfocus} {0}
+#variable {gxprounds} {0}
+#variable {gxptotal} {0}
+#variable {gxpaverage} {0}
+
+#gag {^Your jumpjets ignite}
+#gag {^ nutrients out of it.}
+#gag {^Your feral rage allows you to shrug}
+#gag {^The box doesn't want that...}
+#gag {^Sakhan. This should probably be donated}
+#gag {^Your guild prevents you from doing that.}
+#gag {^Too many of those already to get credit.}
+
+#substitute {^Tank attaches a hose to a corpse and sucks the} {Your tank attaches a hose to a corpse and sucks the nutrients out of it.}
+
+#alias {boxall} {put all in box;boxbpall}
+#alias {sellall} {sell all;sellbpall}
+#alias {donateall} {donate all;donatebpall}
+#alias {gwho} {juggs}
+#alias {gwho2} {juggs2}
+#alias {ff} {fire $nukes}
+#alias {i} {jinv}
+#alias {cr} {creport}
+#alias {ap} {analyze plating}
+#alias {kt1} {ktrig wrap/enhance/deener/truck deener/fdeener}
+#alias {mload} {#read {.tt/3k/guilds/juggernaut_mech.tin}}
+#alias {cd}  {cdefend}
+#alias {cds} {cdefend show}
+#alias {cdp} {cdefend party;#delay {2} {cdm}}
+#alias {cdm} {cdefend ${ses_name}mech}
+#alias {k} {kill}
+#alias {fb} {#if {"%1" == ""} {#send !flipbird all} {#send !flipbird %0}}
+#alias {ak} {flipbird all}
+#alias {pf} {pfocus 1}
+#alias {ts} {truck status}
+
+#alias {fbk}
+{
+	#if {"%1" == "on" || ("%1" == "" && $flipbirdkill == 0)} {
+		#variable {flipbirdkill} {1};
+		#echo {<258>Flipbird all will now replace your kill command.<088>}
+	} {
+		#variable {flipbirdkill} {0};
+		#echo {<258>You will no longer flipbird all in place of your kill command.<088>}
+	}
+}
+#alias {kill}
+{
+	#if {"$support[mode]" == "De"} {
+		#delay {2} {#send !kill %0}
+	} {
+		#if {$flipbirdkill} {
+			#send !flipbird all
+		} {
+			#send !kill %0
+		}
+	}
+}
+
+#alias {gxp}
+{
+	#if {"%1" == ""} {
+		#echo {<258>Your gxp average for the last <158>${gxprounds}<258> rounds is <158>${gxpaverage}<258>.<088>}
+	};
+	#elseif {"%1" == "reset" || "%1" == "clear"} {
+		gxp;
+		#delay {0.1} {
+			#echo {<258>Gxp data has been cleared.<088>};
+			#variable {gxprounds} {0};
+			#variable {gxptotal} {0};
+			#variable {hitsgxp} {}
+		}
+	};
+	#else {
+		#echo {<258>Use  <158>gxp<258> to show your average gxp and <158>gxp reset<258> to reset the data.<088>};
+	}
+}
+
+#alias {stimheal}
+{
+	#if {$corpses[inventory] > 0} {
+		#math {corpses[inventory]} {$corpses[inventory] - 1};
+		#send !drop corpse;
+		#send !fdeener
+	}; #elseif {$corpses[truck] > 0} {
+		#send !get corpse from $jset[truckname];
+		#math {corpses[truck]} {$corpses[truck] -1};
+		#send !fdeener
+	}; #elseif {$corpses[freezer] > 0} {
+		#send !deslab;
+		#send !fdeener
+	}; #elseif {$corpses[cooler] > 0} {
+		#send !uncooler corpse;
+		#send !fdeener
+	}; #elseif {$corpses[coffin] > 0} {
+		#send !unwrap;
+		#send !fdeener
+	}; #else {
+		#if {"$bot" == "1"} {
+			.stop
+		};
+		#bell
+	}
+}
+
+#nop set ansi pref and suff variables for capturing with the jset brief option
+#alias {jmansion}
+{
+	#send !aset jugg_mount_pref -JM-;
+	#send !aset jugg_mount_suff -JM-
+}
+
+#alias {jmansioff}
+{
+	#send !aset jugg_mount yellow
+}
+
+#alias {jdmg}
+{
+	#if {"%1" == "reset"} {
+		#variable {dmgrounds} {0};
+		#variable {mounthits} {0};
+		#variable {mountfail} {0};
+		#variable {mounttotal} {0};
+		#variable {mountavg} {0};
+		#variable {mountravg} {0};
+		#variable {mountmax} {0};
+
+		#variable {tankhits} {0};
+		#variable {tanktotal} {0};
+		#variable {tankavg} {0};
+		#variable {tankravg} {0};
+		#variable {tankmax} {0};
+
+		#variable {phystotal} {0};
+		#variable {physhits} {0};
+		#variable {physavg} {0};
+		#variable {physravg} {0};
+		#variable {physfail} {0};
+		#variable {physmax} {0};
+
+		#variable {pdtotal} {0};
+		#variable {pdhits} {0};
+		#variable {pdavg} {0};
+		#variable {pdravg} {0};
+		#variable {pdfail} {0};
+		#variable {pdmax} {0};
+	} {
+		#math {mountavg} {$mounttotal / $mounthits};
+		#math {mountravg} {$mounttotal / ($mounthits + $mountfail)};
+		#math {tankavg} {$tanktotal / $tankhits};
+		#math {tankravg} {$tanktotal / $tankhits / 2};
+
+		#math {physavg} {$phystotal / $physhits};
+		#math {physravg} {$phystotal / $dmgrounds};
+
+		#math {pdavg} {$pdtotal / $pdhits};
+		#math {pdravg} {$pdtotal / $dmgrounds};
+
+		#echo {<158>Source       Hits  Fails  Hit Avg  Rnd Avg  Max Hit  Total Damage<088>};
+		#draw magenta scroll line 1 1 1 65;
+		#echo {%-9s  %+6g  %+5g  %+7g  %+7g  %+7g  %+12g} 	{mount} 	{$mounthits} {$mountfail} 	{$mountavg}	{$mountravg} {$mountmax}{$mounttotal};
+		#echo {%-9s  %+6g  %+5g  %+7g  %+7g  %+7g  %+12g} 	{tank} 		{$tankhits}  { } 			{$tankavg}	{$tankravg}	{$tankmax}	{$tanktotal};
+		#echo {%-9s  %+6g  %+5g  %+7g  %+7g  %+7g  %+12g} 	{point def} {$pdhits}	 {$pdfail}		{$pdavg}	{$pdravg}	{$pdmax}	{$pdtotal};
+		#echo {%-9s  %+6g  %+5g  %+7g  %+7g  %+7g  %+12g}	{physical} 	{$physhits}  {$physfail}	{$physavg}	{$physravg} {$physmax}	{$phystotal}
+	}
+}
+
+#action {^The computer chirps 'Alternate fire mode %1 for mount number 1'}
+{
+	#if {"%1" == "activated"} {
+		#variable {pfocus} {1}
+	} {
+		#variable {pfocus} {0}
+	}
+}
+
+#nop TODO: record as a 0 dmg hit?
+#action {^Your flamethrower did no damage.}
+{
+	#if {"$jset[brief]" == "on"} {
+		#line gag
+	}
+}
+
+#nop TODO: record as a 0 dmg hit?
+#action {^Your flamethrower did no damage.}
+{
+	#if {"$jset[brief]" == "on"} {
+		#line gag
+	}
+}
+
+#action {^Point defenses %*. \{%d\}}
+{
+	#if {"$jset[brief]" == "on"} {
+		#line gag
+	};
+	#variable {pdlast} {%2};
+	#if {%2 > $pdmax} {#variable {pdmax} {%2}};
+	#math {pdhits} {$pdhits +1};
+	#math {pdtotal} {$pdtotal + %2}
+}
+
+#action {^You try to jump on}
+{
+	#line gag;
+	#variable {physline1} {%0};
+	#variable {physlast} {miss};
+	#math {physfail} {$physfail +1}
+}
+
+#action {{^You (?:kick|punch|jump attack) (?:.*) for ([a-z\s]+) damage. \{(\d+)\}}}
+{
+	#line gag;
+	#variable {physline1} {%0};
+	#variable {physlast} {%3};
+	#if {%3 > $physmax} {#variable {physmax} {%3}};
+	#math {physhits} {$physhits +1};
+	#math {phystotal} {$phystotal + %3}
+}
+
+#action {%* failed to acquire a lock.}
+{
+	#line gag;
+	#math {dmgrounds} {$dmgrounds +1};
+	#math {mountfail} {$mountfail +1};
+	#variable {mountline1} {<${jset[mountfcolour]}>%0<088>}
+}
+
+#action {{^-JM-([\w\s'-.]*)(?:\{([0-9]+)\}-JM-)?}}
+{
+	#line gag;
+	#if {"%3" != ""} {
+		#nop complete line with -JM- on the end;
+		#regexp {%2} {our tank} {
+			#nop it's a tank hit;
+			#math {tankhits} {$tankhits +1};
+			#math {tanktotal} {$tanktotal + %3};
+			#variable {tanklast} {%3};
+			#if {%3 > $tankmax} {#variable {tankmax} {%3}};
+			#variable {tankline1} {<${jset[tankcolour]}>%2{%3}<088>};
+		} {
+			#nop it's a mount hit;
+			#math {dmgrounds} {$dmgrounds +1};
+			#math {mounthits} {$mounthits +1};
+			#math {mounttotal} {$mounttotal + %3};
+			#variable {mountlast} {%3};
+			#if {%3 > $mountmax} {#variable {mountmax} {%3}};
+			#variable {mountline1} {<${jset[mountcolour]}>%2{%3}<088>}
+		}
+	} {
+		#nop the line has wrapped so capture and process on the next line;
+		#variable {unknownline1} {%2}
+	}
+} {1}
+
+#nop only one action can trigger per line, so the unwrapped start, or complete line will take precedence
+#nop this action will capture the wrapped line
+#action {{^([\w\s'-.]*)?\{([0-9]+)\}-JM-$}}
+{
+	#line gag;
+	#variable {$unknownline1} {$unknownline1 %2};
+	#regexp {$unknownline1} {our tank} {
+		#nop it's a tank hit;
+		#math {tankhits} {$tankhits +1};
+		#math {tanktotal} {$tanktotal + %3};
+		#variable {tanklast} {%3};
+		#if {%3 > $tankmax} {#variable {tankmax} {%3}};
+		#variable {tankline1} {<${jset[tankcolour]}>$unknownline1 {%3}<088>}
+	} {
+		#nop it's a mount hit;
+		#math {dmgrounds} {$dmgrounds +1};
+		#math {mounthits} {$mounthits +1};
+		#math {mounttotal} {$mounttotal + %3};
+		#variable {mountlast} {%3};
+		#if {%3 > $mountmax} {#variable {mountmax} {%3}};
+		#variable {mountline1} {<${jset[mountcolour]}>$unknownline1 {%3}<088>}
+	}
+} {2}
+
+#action {{^(?:.*)'s Jugger Support Mech fires at (.*) and (.*)\.(?: \{([0-9]+)\})?}}
+{
+	#variable {mobname} {%2};
+	#math {mechhits} {$mechhits + 1};
+
+	#if {"%4" != ""} {
+		#nop player has numbers;
+		#if {"$jset[supportbrief]" == "on"} {#line gag};		
+		#math {mechdmg} {$mechdmg + %4}
+	} {
+		#if {"$jset[supportbrief]" == "on"} {
+			#nop for some reason could not get a switch statement to work;
+			#nop not a yet a complete list of dmg messages;
+			#if {"%3" == "did no damage"} {
+				#nop no aggregation;
+				#line gag
+			};
+			#elseif {"%3" == "did solid damage"} {
+				#math {mechdmgv[solid]} {$mechdmgv[solid] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "did light damage"} {
+				#math {mechdmgv[light]} {$mechdmgv[light] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "caused moderate wounds"} {
+				#math {mechdmgv[moderate]} {$mechdmgv[moderate] + 1};
+				#line gag;
+			};
+			#elseif {"%3" == "did heavy damage"} {
+				#math {mechdmgv[heavy]} {$mechdmgv[heavy] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "did very heavy damage"} {
+				#math {mechdmgv[very heavy]} {$mechdmgv[very heavy] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "did some damage"} {
+				#math {mechdmgv[some]} {$mechdmgv[some] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "was barely effective"} {
+				#math {mechdmgv[barely]} {$mechdmgv[barely] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "did minimal damage"} {
+				#math {mechdmgv[minimal]} {$mechdmgv[minimal] + 1};
+				#line gag
+			};
+			#elseif {"%3" == "created a bone crushing sound"} {
+				#math {mechdmgv[bone crushing]} {$mechdmgv[bone crushing] + 1};
+				#line gag
+			};
+			#else {
+				#nop no gag;
+			}			
+		}
+	}
+}
+
+#action {^\[\{MISSILES\}\] %* has locked onto}
+{
+	#if {"$jset[nukedonate]" == "on"} {
+		#${nukes} fire
+	}
+}
+
+#nop xcore - launch missile when someone adds their payload
+#action {^The missile whirrs as it accepts %*'s payload.}
+{
+	#send !get missile;
+	#send !launch $mobname
+}
+
+#action {^The computer chirps 'A critical hit}
+{
+	#if {"$jset[showcrits]" == "off"} {
+		#line gag
+	}
+}
+#action {^The computer chirps 'Pumping}
+{
+	#if {"$jset[showenhance]" == "off"} {
+		#line gag
+	}
+}
+
+#variable {areasetup}
+{
+	{tol2} 		{{rune} {demon}}
+	{mahjongg}	{{rune} {demon}}
+	{carebears}	{{rune} {demon}}
+}
+
+#alias {guildsetup}
+{
+	.stop;
+	dungeons;
+	#if {$combat_que_module} {rate run};
+	#if {$scalers_module} {scaler run};
+
+	#if {"$jset[rod]" == "on"} {
+		#if {"$areasetup[$bots[stepper]][rune]" != ""} {
+			#send !touch $areasetup[$bots[stepper]][rune] rune
+		} {
+			#send !touch angel rune
+		}
+	};
+
+	#switch {"$bots[stepper]"} {
+		#case "treehouse_blue" {
+			#nop allow stepper vacuum to pickup the hammer;
+			ctd
+		};
+		#default {
+			ctp
+		}
+	};
+
+	#nop append this to the botpath to cleanup at the end of the dungeon;
+	#path insert guildcleanup;
+
+	#nop trigger .resume from examining the satchel to allow things to catch up;
+	#delay {2} {#send !examine house keys}
+}
+
+#alias {guildcleanup}
+{
+	#if {"$jset[rod]" == "on"} {
+		#send !touch angel rune;
+	};
+	#if {$combat_que_module} {
+		rate 0
+	};
+	fbk off;
+	..
+}
+
+#action {^A ring that holds the keys to houses that you have access to}
+{
+	#if {$bot == 1} {#delay {1} {.resume}}
+}
+
+#action {^%1 pokes you in the ribs}
+{
+	#if {$corpses[inventory] > 0} {
+		#math {corpses[inventory]} {$corpses[inventory] - 1};
+		#send !drop corpse;
+	}; #elseif {$corpses[truck] > 0} {
+		#send !get corpse from $jset[truckname];
+		#math {corpses[truck]} {$corpses[truck] -1};
+		#send !drop corpse
+	}; #elseif {$corpses[freezer] > 0} {
+		#send !deslab
+	}; #elseif {$corpses[cooler] > 0} {
+		#send !uncooler corpse
+	}; #elseif {$corpses[coffin] > 0} {
+		#send !unwrap
+	}
+}
+
+#action {HP\[%d/%d\] SP\[%d/%d\] S\[%d\] TS\[%d\] HE\[%d\] HT\[%d\] M/C\[%d/%d\]\[%d/%d\]\[%d\]}
+{
+	#if {"$jset[hpbar]" == "off"} {
+		#line gag
+	};
+	#var {my[hp][current]} {%1};
+	#var {my[hp][max]} {%2};
+	#var {my[sp][current]} {%3};
+	#var {my[sp][max]} {%4};
+	#var {my[gp1][current]}	{%5};
+	#var {my[gp1][truck]}	{%6};
+	#var {my[gp2][current]}	{%7};
+	#var {hits}	{%8};
+	#var {nukes} {%9};
+	#var {nukes_max} {%10};
+	#var {clan}	{%11};
+	#var {clan_max}	{%12};
+	#var {reset} {%13};
+	
+	#math {my[hp][perc]} {$my[hp][current] * 100 / $my[hp][max]};
+	#math {my[sp][perc]} {$my[sp][current] * 100 / $my[sp][max]};
+
+	#if {"$jset[trans]" == "on" && $my[gp1][current] < $jset[transpc] && $my[sp][current] > 50} {
+		#if {$my[gp2][current] > 70} {#send !dissipate};
+		#send !transpose max
+	};
+
+	#nop refill stim from truck;
+	#if {$my[gp1][current] < 95 && $my[gp1][truck] > 0} {
+		#send !truck transfer
+	};
+
+	#nop refill stim from corpses;
+	#if {$my[gp1][current] < 50} {
+		stimheal
+	};
+
+	#nop replenish sp from rolm spark rune if SP is low;
+	#if {"$jset[rod]" == "on" && $rolm[charges] > 20} {
+		#if {$my[sp][current] < 500} {
+			#send !touch spark rune
+		}
+	};
+
+	#if {$reset >= 98 && $mip[round]} {
+		#if {$nukes > 0} {
+			#send !fire $nukes
+		};
+		#if {$clan > 0} {
+			#send !frenzy
+		}
+	};
+
+	#if {"$jset[brief]" == "off"} {
+		#if {"$physline1" != ""} {
+			#echo {<%s>%s<088>} {$jset[physcolour]} {$physline1};
+			#variable {physline1} {}
+		};
+		#if {"$tankline1" != ""} {
+			#echo {$tankline1};
+			#variable {tankline1} {}
+		};
+		#if {"$mountline1" != ""} {
+			#echo {$mountline1};
+			#variable {mountline1} {}
+		};
+		#if {"$jset[supportbrief]" == "on"} {
+			#if {$mechhits > 0} {
+				#if {$mechdmg > 0} {
+					#nop numbers vaf - display the real dmg amount;
+					#echo {<$jset[mechcolour]>Your mech fires at %s %s times for %s damage.<088>} {$mobname} {$mechhits} {$mechdmg}
+				} {
+					#nop no numbers vaf - display a summary of the hits;
+					#if {"$mechdmgv" == ""} {
+						#echo {<$jset[mechcolour]>Your mech fires at %s but fails to inflict any damage.<088>} {$mobname}
+					} {
+						#local {mechdmgvs} {};						
+						#foreach {*mechdmgv[%*]} {dmess} {
+							#if {"$mechdmgvs" == ""} {
+								#variable {mechdmgvs} {${dmess}(${mechdmgv[$dmess]})}
+							} {
+								#variable {mechdmgvs} {$mechdmgvs, ${dmess}(${mechdmgv[$dmess]})}
+							}
+						};
+						#echo {<$jset[mechcolour]>Your mech fires at %s for %s damage.<088>} {$mobname} {$mechdmgvs}
+					}
+				}
+			}
+		}
+	} {
+		#echo {[ Attacks ] [<%s>%+6g<088>] [<%s>%+6g<088>][<%s>%+6g<088>][<%s>%+6g<088>][<%s>%+6g<088>]} {$jset[pdcolour]} {$pdlast} {$jset[physcolour]} {$physlast} {$jset[tankcolour]} {$tanklast} {$jset[mountcolour]} {$mountlast} {$jset[mechcolour]} {$mechdmg}
+	};
+
+	#variable {mechhits} {0};
+	#variable {mechdmg} {0};
+	#variable {mechdmgv} {};
+
+	#variable {tanklast} {0};
+	#variable {mountlast} {0};
+	#variable {physlast} {0};
+		
+	#if {"$jset[hpdelta]" == "on"} {
+		#math {hpdelta} {$my[hp][current] - $hplast};
+		#variable {hplast} {$my[hp][current]}
+	};
+
+	#nop get the bot step position and length for displaying on the bottom bars;
+	#path get length path_len;
+	#path get position path_pos
+}
+
+#action {{Ammo\[(\d+)?\/?(\d+)?\/?(\d+)?/?(\d+)?\/?(\d+)?\] SHP\[\s*(\d+)\] SM\[(\w+)\] SA\[([a-zA-Z\s]+)\] SD\[([a-zA-Z\s]+)\] G\[([\d\.]+)\]}}
+{
+	#if {"$jset[hpbar]" == "off"} {
+		#line gag;
+	};
+	#var {ammo[1]}		{%2};
+	#var {ammo[2]}		{%3};
+	#var {ammo[3]}		{%4};
+	#var {ammo[4]}		{%5};
+	#var {ammo[5]}		{%6};
+	#var {support[hp]}	{%7};
+	#var {support[mode]}	{%8};
+	#var {support[assault]}	{%9};
+	#var {support[defend]}	{%10};
+	#var {gxp} {%11};
+
+	#math {gxpdelta} {$gxp - $gxplast};
+	#variable {gxplast} {$gxp};
+
+	#math {gxprounds} {$gxprounds + 1};
+	#math {gxptotal} {$gxptotal + $gxpdelta};
+	#math {gxpaverage} {$gxptotal / $gxprounds};
+	#format {ammo_len} {%L} {$ammo};
+
+	#if {"$jset[ammobuy]" == "on" && $ammo_len > 0} {
+		#if {$ammo[1] < 100} {
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 1 $jset[ammoamount]
+		}; #elseif {$ammo[2] < 100} {
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 2 $jset[ammoamount]
+		}; #elseif {$ammo[3] < 100} {
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 3 $jset[ammoamount]
+		}; #elseif {$ammo[4] < 100} {
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 4 $jset[ammoamount]
+		}; #elseif {$ammo[5] < 100} {
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 5 $jset[ammoamount]
+		}
+	};
+
+	#if {"$jset[support]" == "on"} {
+		#if {$support[hp] > 0 && $support[hp] < 30} {
+			dismiss
+		};
+
+		#if {$support[hp] == 0 && $clan > 0} {
+			support summon;
+			#if {"$support[auto_defend]" == "on"} {
+				#delay {support_resummon_defend} {support defend} {2};
+				#delay {support_resummon_defend2} {support defend} {4}
+			}
+		};
+
+		#if {"$support[mode]" == "As" && "$support[assault]" == "No"}
+		{
+			support assault $jset[supportfocus]
+		}
+	};
+
+	#nop calling update_status here prevents #line gag working above;
+	#nop update_status
+}
+
+#alias {update_status}
+{
+	#var {my[hp][graph]}	{@graph{$my[hp][current];$my[hp][max]}};
+	#var {my[sp][graph]}	{@graph{$my[sp][current];$my[sp][max]}};
+	#var {my[gp1][graph]}	{@graph{$my[gp1][current];$my[gp1][max]}};
+	#var {enemy[graph]}	{@graph{$enemy[hp];100}};
+	#format {hp}		{%+5s} {@colscale{$my[hp][current];$my[hp][max]}};
+	#format {hp_max}	{%-5s} {<128>$my[hp][max]<088>};
+	#format {sp} 		{%+4s} {@colscale{$my[sp][current];$my[sp][max]}};
+	#format {sp_max}	{%-4s} {<128>$my[sp][max]<088>};
+	#format {gp1}		{   %+3s/%-3s} {@colscale{$my[gp1][current];100}} {@colscale{$my[gp1][truck];100}};
+	#format {rounds}	{%+6s} {$mip[round]};
+
+	#format {corpsestatus} {<eea>%s<088>/<aff>%s<088>/%s<088>} {$corpses[inventory]} {$corpses[coffin]} {@onoffnumbercolour{$freezer;<ddf>;$corpses[truck]}};
+	#format {botstatus} {%+3s/%-3s} {$path_pos} {$path_len};
+	#format {gstatus} {<088>%sP %sF%sC%sS%s%s%sH<088>} {@statuscolour{$pfocus}} {@statuscolour{$flipbirdkill}} {@statuscolour{$corpsetrig_on}} {@statuscolour{$scalers_enabled}} {@statuscolour{$combat_que_on}} {$area_rating} {@statuscolour{$global_hardmode}};
+	
+	#line ignore #showme {${scol}HP:$hp/$hp_max ${scol}SP:$sp/$sp_max  ${scol}ST:$gp1 ${scol}CR:<088>$rounds     ${scol}BS:<088>$botstatus} {-4};
+	#line ignore #showme {${scol}HP:${my[hp][graph]}  ${scol}SP:${my[sp][graph]} ${scol}ST:${my[gp1][graph]} ${scol}EH:${enemy[graph]} ${scol}OK:<088>$onkill} {-3};
+
+	#if {"$jset[gxpdelta]" == "on"} {
+		#variable {gxpstatus} {@colscale{$gxp;100} +$gxpdelta ~$gxpaverage}
+	} {
+		#variable {gxpstatus} {@colscale{$gxp;100}}
+	};
+
+	#if {"$jset[supportbar]" == "off"} {
+		#variable {shpshown} {@colscale{$support[hp];100;%}}
+	} {
+		#variable {shpshown} {@graph{$support[hp];100}}
+	};
+
+	#if {"$support[mode]" == "De"} {
+		#format {supportstatus} {%+4s %sDe(%s) <088>%d/%d} {$shpshown} {@modeansi{$support[mode]}} {$support[defend]} {$support[current]} {$support[max]}
+	} {
+		#format {supportstatus} {%+4s %sAs(%s) <088>%d/%d} {$shpshown} {@modeansi{$support[mode]}} {$support[assault]} {$support[current]} {$support[max]}
+	};
+
+	#if {"$jset[hits]" == "on"} {
+		#variable {hitsstatus} {${scol}Hits[@colscaleinv{$hits;60}${scol}] }
+	} {
+		#variable {hitsstatus} {}
+	};
+
+	#if {"$jset[heat]" == "on"} {
+		#variable {heatstatus} {${scol}Heat[<088>@colscaleinv{$my[gp2][current];100}${scol}] }
+	} {
+		#variable {heatstatus} {}
+	};
+
+	#if {"$jset[nukes]" == "on"} {
+		#variable {nukestatus} {${scol}N[<088>$nukes/$nukes_max${scol}] }
+	} {
+		#variable {nukestatus} {}
+	};
+
+	#if {"$jset[hpdelta]" == "on"} {
+		#format {hpdeltablank} {${scol}HP[<088>%+5s${scol}] } {$hpdelta}
+	} {
+		#variable {hpdeltablank} {}
+	};
+
+	#if {"$jset[rod]" == "on"} {
+		#format {rodstatus} {${scol}Rod[<088>%s${scol}] } {$rolm[charges]}
+	} {
+		#variable {rodstatus} {}
+	};
+
+	#if {"$jset[ammo]" == "on"} {
+		#variable {ammostatus} {@colscale{$ammo[1];$jset[ammoamount]}};
+		#if {"$ammo[2]"" != ""} {#variable {ammostatus} {$ammostatus/@colscale{$ammo[2];$jset[ammoamount]}}};
+		#if {"$ammo[3]"" != ""} {#variable {ammostatus} {$ammostatus/@colscale{$ammo[3];$jset[ammoamount]}}};
+		#if {"$ammo[4]"" != ""} {#variable {ammostatus} {$ammostatus/@colscale{$ammo[4];$jset[ammoamount]}}};
+		#if {"$ammo[5]"" != ""} {#variable {ammostatus} {$ammostatus/@colscale{$ammo[5];$jset[ammoamount]}}};
+		#variable {ammostatus} {${scol}Ammo[${ammostatus}<088> $ammotypes[$jset[mounttype]][$jset[ammotype]_s]${scol}] }
+	} {
+		#variable {ammostatus} {}
+	};
+
+	#line ignore #showme {${hpdeltablank}${ammostatus}${hitsstatus}${heatstatus}${scol}Support[${supportstatus}${scol}] C[${corpsestatus}${scol}] S[${gstatus}${scol}] ${nukestatus}R[@colscale{$reset;100}${scol}] G[${gxpstatus}${scol}] ${rodstatus}} {-6}
+}
+
+#nop called from common.tin module when you log in
+#alias {on_login}
+{
+	jump;w;home;mapgo home;
+	dungeons;
+	cq load;cq on;
+	hp;gs
+}
+
+#nop called from common.tin module whenever you reconnect, and also the gswap module after a gswap
+#alias {on_reconnect}
+{
+	#nop keep all these items to enable/disable scripts for them;
+	keep coffin;keep cocoon;keep freeway;cuddle freeway;keep shield;
+	cc;
+	dungeons;
+	touch diamond rune;
+	cq load;cq on;
+	hp;gs;
+	pf;pf;
+}
+
+#alias {on_kshield_equip}
+{
+	#send !repeat combat/bash/0/1;
+	#gag {backward.$}
+}
+
+#alias {on_kshield_remove}
+{
+	#send !repeat off;
+	#ungag {backward.$}
+}
+
+#nop handle lord stanley's cup hockey fan corpses
+#alias {on_hockey_fan}
+{
+	#if {$my[gp1][current] >= 100} {
+		#if {$my[gp1][truck] < 100} {
+			#send !truck deener
+		} {
+			#send !fdeener	
+		}
+	} {
+		#send !fdeener
+	}
+}
+
+#nop called from the gswap module when you leave this gobj
+#alias {on_gswap_leave}
+{
+	#nop ;
+}
+
+#nop called from the gswap module when you enter this gobj
+#alias {on_gswap_enter}
+{
+	reflex clear;
+	repeat off;
+	panic off;
+	kt1;
+	get all-weather backpack;
+	get all-weather backpack;
+	get all;
+	wield rod;
+	wield sword;
+	wear shield;
+	wear all;
+	keep all;
+	support summon;
+	calltruck;
+	hp;gs;
+	ibrief all on
+}
+
+#alias {guildrun}
+{
+	.stop;
+	#if {"$jset[winch]" == "on"} {touch winch rune} {go home};
+	#delay {1} {
+		go depot;donateall;
+		go storage;donateall;
+		go smithy;fix all;
+		thisarea
+	}
+}
+
+#alias {corpserun}
+{
+	.stop;
+	#if {"$jset[winch]" == "on"} {touch winch rune} {go home};
+	#delay {1} {
+		go depot;donateall;
+		go storage;donateall;
+		go morgue;donate coffin;deslab all;wrap all;donate coffin;wrap all;donate coffin;
+		home;bank;deposit all;withdraw $jset[coins];
+		home;smithy;fix all;
+		thisarea
+	}
+}
+
+#alias {corpserun2}
+{
+	.stop;
+	#if {"$jset[winch]" == "on"} {touch winch rune} {go home};
+	#delay {1} {
+		go depot;donateall;
+		go home;nextshop;
+		go morgue;donate coffin;deslab all;wrap all;donate coffin;wrap all;donate coffin;
+		home;bank;deposit all;withdraw $jset[coins];
+		home;smithy;fix all;
+		thisarea
+	}
+}
+
+#alias {startrun}
+{
+	.stop;
+	go depot;donateall;
+	go storage;donateall;
+	go bank;deposit all;withdraw $jset[coins];
+	home;smithy;fix all;
+	examine dwarf
+}
+
+#nop use the dwaft in the smithy as a timing mechanism to let everything catch up before resuming/restarting
+#action {^This rough looking dwarf looks at you cunningly with eyes of stone} {#delay {0.5} {.resume}}
+
+#alias {on_rolm_changed}
+{
+	#if {"$support[mode]" != "De"} {
+		#switch {"%1"} {
+			#case "edged" {
+				assault edged
+			};
+			#case "blunt" {
+				assault blunt
+			};
+			#case "fire" {
+				assault fire
+			};
+			#case "ice" {
+				assault ice
+			};
+			#case "acid" {
+				assault electric
+			};
+			#case "electric" {
+				assault electric
+			};
+			#case "mind" {
+				assault fire
+			};
+			#case "energy" {
+				assault fire
+			};
+			#case "poison" {
+				assault poison
+			};
+			#case "radiation" {
+				assault radiation
+			}
+		}
+	}
+}
+
+#alias {assault}
+{
+	#send !support assault %1
+}
+
+#alias {defend}
+{
+	#send !support defend %1
+}
+
+/* Disable jset[ammobuy] for energy mounts */
+#action {^That gun is full already.}
+{
+	#variable {jset[ammobuy]} {off}
+}
+
+#action {^After your discount, it will cost %1 coins.}
+{
+	#if {"$jset[ammodonate]" == "on"} {
+		#send !give %1 coins to eep;
+		#send !truck vault
+	}
+}
+
+/*
+	creport
+*/
+#action {^  [%1%s] [%s%d] [{\s*}%d] $} {
+	#format {cr_class} {%p} {%4};
+	#format {cr_rnds} {%p} {%6};
+	#if {$cr_rnds == 0} {
+		#var {cr_hr} {Undefined}
+	} {
+		#math {cr_hr} {1.0*${cr_class}/${cr_rnds}*1800*.8};
+		#format {cr_hr} {%d} {${cr_hr}};
+		#format {cr_hr} {%g} {${cr_hr}}
+	};
+	#math {cr_class_tot} {${cr_class_tot} + ${cr_class}};
+	#math {cr_rnds_tot} {${cr_rnds_tot} + ${cr_rnds}};
+	#math {cr_count} {${cr_count} + 1};
+	#format {cr_hr} {%+14s} {<078>${cr_hr}<088>};
+	#var {cr_str} {[<078>%1%2<088>] [<078>%3%4<088>] [<138>%5%6<088>] [$cr_hr]};
+	#line gag;
+	#echo { $cr_str<088>}
+}
+
+#substitute {^ .--------------------------. .------------. .----.}
+	    {<038> .-------------------------. .------------. .----. .--------------.<088>}
+#substitute {^   Monster\'s Name                  Class      Rnds}
+	    {    Monster's Name                Class      Rnds      Exp/Hour}
+
+#action {^  Current Enemy: }
+{
+	#math	{cr_avg_class}	{1.0*${cr_class_tot}/${cr_count}};
+	#format	{cr_avg_class}	{%d}	{${cr_avg_class}};
+	#math	{cr_avg_rnds}	{1.0*${cr_rnds_tot}/${cr_count}};
+	#format	{cr_avg_rnds}	{%d}	{${cr_avg_rnds}};
+	#math 	{cr_avg_hr}	{1.0*${cr_class_tot}/${cr_rnds_tot}*1800*.8};
+	#format	{cr_avg_hr}	{%d}	{${cr_avg_hr}};
+	#format	{cr_avg_hr}	{%g}	{${cr_avg_hr}};
+	#var	cr_class_tot	0;
+	#var	cr_rnds_tot	0;
+	#var	cr_count	0;
+	#format	{cr_avg_class}	{%+32s}	{${cr_avg_class}};
+	#format	{cr_avg_rnds}	{%+7s}	{${cr_avg_rnds}};
+	#format	{cr_avg_hr}	{%+17s}	{${cr_avg_hr}};
+	#format	{cr_avg_xp}	{%d}	{${cr_avg_xp}};
+	#format	{cr_avg_xp}	{%+64s}	{${cr_avg_xp}};
+	#var	{cr_str}	{  Average:${cr_avg_class}${cr_avg_rnds}${cr_avg_hr}};
+	#showme {${cr_str}};
+	#NOP #showme {${cr_avg_xp}}
+}
+
+/* Eval Enhancer */
+#action {^[EDGE] [BLUN] [HEAT] [COLD] [ACID] [ELEC] [PSI ] [ENER] [TOXI] [RADI]} {
+	#echo {<172> EVAL MATCH <088>};
+	#variable {eval} {%0}
+}
+
+#alias {corpsetrig}
+{
+	#if {$combat_que_on} {
+		#nop unlock any comabt que abilities that are once per fight;
+		#nop TEMP - there's an issue with a 'any' que item and the mip[round] variable taking a round to reset;
+		#variable {mip[round]} {0};
+		cq refresh
+	};
+	#if {$corpsetrig_on > 0} {
+		#if {"$jset[ktrig]" == "off"} {
+			#send !wrap;
+			#if {"$freezer" == "on"} {#send !slab};
+			#send !fdeener
+		};
+		#if {$corpsetrig_on == 1} {#send !get coins} {#send !divvy coins};
+		#if {$backpack_module} {stacknext}
+	};
+	#else {
+		#nop corpse trig off, send a divvy as it will unidle, and is semi useful;
+		#send !divvy coins	
+	};
+
+	#if {$onkill_module} {onkillrun};
+	#if {$cocoon} {#send !fuse}
+}
+
+#variable {ammotypes}
+{
+	{missile}
+	{
+		{default} {6}
+		{fire} {6}
+		{ice} {7}
+		{nitrogen} {7}
+		{poison} {8}
+		{biotech} {8}
+		{acid} {9}
+		{chemical} {9}
+		{radiation} {10}
+		{radioactive} {10}
+		{6} {fire}
+		{6_s} {<faa>Fi<088>}
+		{7} {ice}
+		{7_s} {<aaf>Ic<088>}
+		{8} {poison}
+		{8_s} {<afa>Poison<088>}
+		{9} {acid}
+		{9_s} {<fff>Ac<088>}
+		{10} {radiation}
+		{10_s} {<fea>Ra<088>}
+	}
+}
+
+#alias {mammo}
+{
+	#regexp {%0} {{(default|fire|ice|nitrogen|poison|biotech|acid|chemical|radiation|radioactive)(?:\s)?([d])?}} {
+		#if {"$ammotypes[missile][&2]" != ""} {
+			jset ammotype $ammotypes[missile][&2]
+		};
+		#if {"&3" == "d"} {
+			#send !dump 1;
+			#send !truck ammo vbuy $jset[mounttype] $jset[ammotype] 1 $jset[ammoamount]
+		};
+	} {
+		#echo {<258>Invalid ammo type for missiles, try <faa>default/fire<088>, <aaf>ice/nitrogen<088>, <afa>poison/biotech<088>, <fff>acid/chemical<088> or <ffa>radiation<088>.<088>}
+	}
+}
+
+/*
+
+Srm/Lrm
+
+-----------------------Available projectile ammo types-------------------
+Autocannon ammo price is for a 20 caliber round. Smaller ones cost less
+  Name                         Cost(med mount=1/2 off, light 3/4 off)
+1)Machine gun ammo              0
+2)Autocannon Ammo               7
+7)Gauss Ammo                    10
+
+Missiles cost fractional amounts. The amount listed is for 100 missiles.
+  Name                         Cost(med mount=1/2 off, light 3/4 off)
+1)Srm Ammo                      200
+2)Srm Nitrogen Ammo             300
+3)Srm Biotech Ammo              400
+4)Srm Chemical Ammo             500
+5)Srm Radioactive Ammo          600
+6)Lrm Ammo                      100
+7)Lrm Nitrogen Ammo             110
+8)Lrm Biotech Ammo              120
+9)Lrm Chemical Ammo             140
+10)Lrm Radioactive Ammo         150
+
+Missile ammo gs3:
+  Light Lrm 20             Ammo: 800   Lrm Ammo   <Taking 1 slot>
+  Light Lrm 20             Ammo: 940   Lrm Nitrogen Ammo   <Taking 1 slot>
+  Light Lrm 20             Ammo: 940   Lrm Biotech Ammo   <Taking 1 slot>
+  Light Lrm 20             Ammo: 940   Lrm Chemical Ammo   <Taking 1 slot>
+  Light Lrm 20             Ammo: 940   Lrm Radioactive Ammo   <Taking 1 slot>
+
+*/
+
+#NOP Support Defend, TODO
+#alias {sdef}
+{
+	#switch {"%1"} {
+		#case	{""}	{
+			#if {"$support[auto_defend]" == "on"} {
+				#var support[auto_defend] off;
+				#untick support_defend
+			} {
+				#var support[auto_defend] on;
+				#tick {support_defend} {
+					#if {$mip[round] > 0 && $mip[round] < 4} {
+						support defend
+					}
+				} {2}
+			}
+		};
+		#case	{"on"}	{
+			#var support[auto_defend] on;
+			#tick {support_defend} {
+				#if {$mip[round] > 0 && $mip[round] < 4} {
+					support defend
+				}
+			} {2}
+		};
+		#case	{"off"}	{
+			#var support[auto_defend] off;
+			#untick support_defend
+		};
+		#default {#echo {<202> Invalid input!  Use: on or off <099>}}
+	}
+
+}
+
+#function {modeansi}
+{
+	#if {"%1" == "De" || "%1" == "Defend"} {
+		#variable result <afc>
+	} {
+		#variable result <fbb>
+	}
+}
+
+#nop override the default colscale to receive a third argument
+#function {colscale}
+{
+	#math per {100*%1/%2};
+	#switch {1} {
+		#case {$per >= 100}	{#return <168>%1%3<088>};
+		#case {$per > 90}	{#return <afa>%1%3<088>};
+		#case {$per > 80}	{#return <aea>%1%3<088>};
+		#case {$per > 70}	{#return <bea>%1%3<088>};
+		#case {$per > 60}	{#return <bda>%1%3<088>};
+		#case {$per > 50}	{#return <cda>%1%3<088>};
+		#case {$per > 40}	{#return <dca>%1%3<088>};
+		#case {$per > 30}	{#return <dba>%1%3<088>};
+		#case {$per > 20}	{#return <eba>%1%3<088>};
+		#case {$per > 10}	{#return <eaa>%1%3<088>};
+		#case {$per >= 0}	{#return <faa>%1%3<088>};
+		#default 	{#return <088>%1%3}
+	}
+}
+
+#nop colscale with reversed colours
+#function {colscaleinv}
+{
+	#math per {100*%1/%2};
+	#switch {1} {
+		#case {$per <=  0}	{#return <168>%1%3<088>};
+		#case {$per <= 10}	{#return <afa>%1%3<088>};
+		#case {$per <= 20}	{#return <aea>%1%3<088>};
+		#case {$per <= 30}	{#return <bea>%1%3<088>};
+		#case {$per <= 40}	{#return <bda>%1%3<088>};
+		#case {$per <= 50}	{#return <cda>%1%3<088>};
+		#case {$per <= 60}	{#return <dca>%1%3<088>};
+		#case {$per <= 70}	{#return <dba>%1%3<088>};
+		#case {$per <= 80}	{#return <eba>%1%3<088>};
+		#case {$per <= 90}	{#return <eaa>%1%3<088>};
+		#case {$per <= 100}	{#return <faa>%1%3<088>};
+		#default 	{#return <088>%1%3}
+	}
+}
+
+
+#nop override from mip.tin
+#alias {.mipProcessGlineJuggernaut}
+{
+	#if {%1 == 1} {
+		#regexp {$mip[gline][1]} {{Ammo:\[(\d+)?/?(\d+)?/?(\d+)?/?(\d+)?/?(\d+)?\]} <838>Gxp: %d.%d\%<099> Hits: \[%d\] <868>Coffin: %d/%d} {
+			#VAR {ammo[1]}			{&2};
+			#VAR {ammo[2]}			{&3};
+			#VAR {ammo[3]}			{&4};
+			#VAR {ammo[4]}			{&5};
+			#VAR {ammo[5]}			{&6};
+			#VAR {gxp}				{&7.&8};
+			#VAR {hits}				{&9};
+			#VAR {corpses[coffin]}		{&10};
+			#VAR {corpses[coffinsize]}	{&11}
+		}
+	}; #elseif {%1 == 2} {
+		#regexp {$mip[gline][2]} {Nukes: [%d/%d]<099> <858>Support: [%d/%d]<099> Reset: [%d\%] Suit: %w} {
+			#VAR {nukes}		{&1};
+			#VAR {nukes_max}	{&2};
+			#VAR {support[current]}		{&3};
+			#VAR {support[max]}		{&4};
+			#VAR {reset}		{&5};
+			#VAR {suit}			{&6}
+		}
+	}; #else {
+		#echo {<171> Invalid Gline Number <088>}
+	}
+} {1}
+
+
+/*
+	jset - jugger settings that save through logins.
+	Type 'jset info'
+*/
+#variable {jsetinfo}
+{
+	{numbers}		{{group}{miscellaneous}	{default}{off}			{format}{^(on|off)$}				{help} {Set to on/off based on the presence of the numbers VAF}}
+	{winch}			{{group}{miscellaneous}	{default}{on}			{format}{^(on|off)$}				{help} {Use the rolm for guildruns instead of running}}
+	{ktrig}			{{group}{miscellaneous}	{default}{on}			{format}{^(on|off)$}				{help} {Handle corpses using ktrig vaf instead of from corpsetrig}}
+	{trans}			{{group}{miscellaneous}	{default}{off} 			{format}{^(on|off)$}				{help} {Access to the transpose power at 60}}
+	{transpc}		{{group}{miscellaneous}	{default}{95}			{format}{^([1-9][0-9]{0,1})$}		{help} {Stim percentage to start transposing}}
+	{coins}			{{group}{miscellaneous}	{default}{10000}		{format}{^([1-9][0-9]{0,6})$}		{help} {Number of coins to carry around after a guildrun}}
+	{rod}			{{group}{miscellaneous}	{default}{off}			{format}{^(on|off)$}				{help} {Use Rod of Lordly might to heal SP}}
+	{truckname}		{{group}{miscellaneous}	{default}{}				{format}{^([a-z]{1,20})$}			{help} {Your truck's name (lowercase)}}
+	{nukedonate}	{{group}{miscellaneous}	{default}{on}			{format}{^(on|off)$}				{help} {Automatically fire your nukes at someone's locked target}}
+	
+	{support}		{{group}{support}		{default}{on}			{format}{^(on|off)$}				{help} {Support mech automation on/off}}
+	{supportbar}	{{group}{support}		{default}{off}			{format}{^(on|off)$}				{help} {Support show a health bar intead of percentage}}
+	{supportbrief}	{{group}{support}		{default}{off}			{format}{^(on|off)$}				{help} {Brief your support mech's damage output}}
+	{supportfocus}	{{group}{support}		{default}{fire}			{format}{^(on|off)$}				{help} {Default dmg type to use for your support}}
+	
+	{ammoamount}	{{group}{ammo}			{default}{5000}			{format}{^([1-9][0-9]{0,6})$} 		{help} {Ammount to purchase for ammo supply runs}}	
+	{ammobuy}		{{group}{ammo}			{default}{off}			{format}{^(on|off)$}				{help} {Toggle ammo supply runs on/off}}
+	{ammotype}		{{group}{ammo}			{default}{1} 			{format}{^([1-9][0]{0,1})$}			{help} {Type of ammo to purchase for ammo supply runs}}
+	{ammodonate}	{{group}{ammo}			{default}{off}			{format}{^(on|off)$}				{help} {Donate the ammo cost back to the vault}}
+	{mounttype} 	{{group}{ammo}			{default}{projectile}	{format}{^(projectile|missile)$}	{help} {Type of weapon used for ammo supply runs (projectile/missile)}}
+
+	{ammo}			{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Show ammo on the guild bar}}
+	{hpdelta}		{{group}{display}		{default}{off}			{format}{^(on|off)$}				{help} {Toggle display of HP delta}}
+	{gxpdelta}		{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Toggle display of gxp delta per round}}
+	{hpbar}			{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Your default HP bar gag state}}
+	{hits}			{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Show incoming hit count on the guild bar}}
+	{heat}			{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Show heat on the guild bar}}
+	{nukes}			{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Show nukes on the guild bar}}
+	{brief}			{{group}{display}		{default}{off}			{format}{^(on|off)$}				{help} {Brief your combat messages (requires numbers VAF)}}
+	{showenhance}	{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Toggle display of your enhance (heal) message}}
+	{showcrits}		{{group}{display}		{default}{on}			{format}{^(on|off)$}				{help} {Toggle display of your critical hit message}}
+
+	{mountcolour}	{{group}{colours}		{default}{ffa}		{format}{^([a-fA-F0-9]{3})$}			{help} {Mount damage message colour}}
+	{mountfcolour}	{{group}{colours}		{default}{fda}		{format}{^([a-f0-9]{3})$}				{help} {Mount lock failure message colour}}
+	{tankcolour}	{{group}{colours}		{default}{fba}		{format}{^([a-f0-9]{3})$}				{help} {Tank damage message colour}}
+	{mechcolour}	{{group}{colours}		{default}{268}		{format}{^([a-f0-9]{3})$}				{help} {Tank damage message colour}}
+	{physcolour}	{{group}{colours}		{default}{168}		{format}{^([a-f0-9]{3})$}				{help} {Your punch/kick/dfa damage message colour}}
+	{pdcolour}		{{group}{colours}		{default}{118}		{format}{^([a-f0-9]{3})$}				{help} {Point defense colour}}
+}
+
+#alias {_jset_reset}
+{
+	#echo {<258>Juggernaut settings have been reset to default.<088>};
+	#class {juggersettings} {kill};
+	#class {juggersettings} {open};
+	#variable {jset} { };
+	#class {juggersettings} {close};
+	#class {juggersettings} {save};
+	#foreach {*jsetinfo[%*]} {name} {#variable {jset[$name]} {$jsetinfo[$name][default]}};
+	#class {juggersettings} {write} {.tt/char/$ses_name-jset.tin}
+}
+
+#alias {_jset_load}
+{
+	#class {juggersettings} {kill};
+	#class {juggersettings} {read} {.tt/char/$ses_name-jset.tin};
+	#class {juggersettings} {size} {jsetsize};
+	#if {$jsetsize == 0} {
+		#echo {<258>Juggernaut settings file not found!<088>};
+		_jset_reset;
+		#unvariable {jsetsize}
+	};
+
+	#list {jsetgroups} {create} {ammo;support;display;miscellaneous;colours}
+}
+
+#alias {jset}
+{
+	#if {"%1" == ""} {
+		#local {jsetout} {};
+		#format {jsetout} {<158> Setting             Value<088>} {$jsetout};
+		#format {jsetout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$jsetout};
+
+		#foreach {$jsetgroups[%*]} {group} {     
+			#format {jsetout} {%s\n <158>%n<088>} {$jsetout} {$group};
+			#foreach {*jsetinfo[%*]} {name} {
+				#if {"$group" == "$jsetinfo[$name][group]"} {
+					#if {"$group" == "colours"} {
+						#format {jsetout} {%s\n     <258>%-15s<088> <%s>%.60s<088>} {$jsetout} {$name} {$jset[$name]} {$jset[$name]}
+					} {
+						#format {jsetout} {%s\n     <258>%-15s<088> %.60s} {$jsetout} {$name} {$jset[$name]}
+					}
+				}
+			}
+		};
+		#echo {$jsetout}
+	};
+	#elseif {"%1" == "reset"} {
+		#if {$jset_reset_count == 0} {
+			#echo {<258>Are you sure you wish to reset your jugger settings?\nType <158>jset reset<258> again within 10 seconds to confirm.<088>};
+			#variable {jset_reset_count} {1};
+			#delay {jset_reset} {
+				#variable {jset_reset_count} {0};
+				#echo {<258>Jugger settings reset period has timed out.<088>}
+			} {10}
+		} {
+			#variable {jset_reset_count} {0};
+			_jset_reset
+		}				
+	};
+	#elseif {"%1" == "help"} {
+		#local {jsetout} {};
+		#format {jsetout} {<158> Setting             Value<088>} {$jsetout};
+		#format {jsetout} {%s\n<258>-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<088>} {$jsetout};
+
+		#foreach {$jsetgroups[%*]} {group} {     
+			#format {jsetout} {%s\n <158>%n<088>} {$jsetout} {$group};
+
+			#foreach {*jsetinfo[%*]} {name} {
+				#if {"$group" == "$jsetinfo[$name][group]"} {
+					#format {jsetout} {%s\n     <258>%-15s<088> %.60s} {$jsetout} {$name} {$jsetinfo[$name][help]}
+				}
+			}
+		};
+		#echo {$jsetout}
+	};
+	#else {
+		#regexp {%0} {{([a-z]+) ([a-zA-Z0-9\._\'\s\-]+)}} {
+			#if {"$jsetinfo[&2][format]" != ""} {
+				#regexp {&3} {{$jsetinfo[&2][format]}} {
+					#if {"&3" == "clear"} {
+						#nop for freeform text entries, they can be cleared with the clear argument;
+						#variable {jset[&2]} {};
+						#echo {<258>Jugger setting <158>&2<258> has been <158>cleared<258>.<088>}
+					} {
+						#variable {jset[&2]} {&3};
+						#echo {<258>Jugger setting <158>&2<258> set to <158>&3<258>.<088>}
+					};
+					_jset_save
+				} {
+					#echo {<258>Invalid jset value <158>&3<258> for <158>&2<258>.<088>}
+				}
+			} {
+				#echo {<158>&2<258> is not a valid jset option.<088>}
+			}
+		} {
+			#echo {<258>Syntax is <158>jset <option> <value><258>.<088>}
+		}
+	}
+}
+
+#nop used internally for resetting boot-long settings 
+#alias {_jset_clear}
+{
+	#nop #variable {jset[hidden]} {};
+	_jset_save
+}
+
+#alias {_jset_save}
+{
+	#class {juggersettings} {write} {.tt/char/$ses_name-jset.tin}
+}
+
+
+/*
+	INIT
+*/
+_jset_load
+jdmg reset
+
+#class {juggernaut} {close}
