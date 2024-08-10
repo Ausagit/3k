@@ -1,0 +1,29 @@
+#class {bot} {open}
+
+#var {no_loop} {1}
+#var {no_home} {1}
+#var {hardmode} {0}
+#var {vacuum} {0}
+#var {no_player} {1}
+#var {no_robots} {1}
+
+#var {botpath} {guildsetup;e;n;e;w;s;w;w;n;e;w;s;w;n;s;w;n;s;w;n;s;w;w;n;s;w;n;s;e;e;e;e;e;e;e;e;s;e;w;w;w;w;n;w;
+w;s;w;w;w;e;e;e;n;e;e;s;e;e;e;s;e;w;n;w;w;s;w;w;w;w;w;w;s;n;e;e;e;e;e;e;n;e;e;e;s;s;w;w;w;w;w;w;w;
+e;e;e;e;e;e;e;s;w;w;w;n;w;w;s;w;w;w;w;e;e;e;e;n;e;e;s;e;e;e;s;w;w;w;w;w;n;w;w;s;w;w;e;e;n;e;e;s;
+e;e;e;e;e;s;n;w;w;s;w;w;w;w;w;w;w;e;e;e;e;e;e;e;n;e;e;s;s;w;w;w;w;w;w;w;w;e;e;e;e;e;e;e;e;
+s;w;w;n;w;w;s;w;w;w;w;w}
+
+#act {^=M= {Aegis Sentry Model 65-SE|Limping zombie|Bullet-ridden zombie}} {
+	#switch {"%1"} {
+		#case {"Limping zombie"}		{#var mobname zombie};
+		#case {"Bullet-ridden zombie"}		{#var mobname zombie};
+		#case {"Aegis Sentry Model 65-SE"}	{#var mobname sentry};
+	};
+    #if {"$mobname" == "sentry" && "$guild" == "necromancer" && $no_robots} {
+        touch dove rune
+    } {
+	    _check_mob
+    }
+}
+
+#class {bot} {close}
