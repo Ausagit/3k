@@ -3,17 +3,15 @@
 #read {.tt/3k/modules/backpack.tin}
 #read {.tt/3k/modules/onkill.tin}
 #read {.tt/3k/modules/scalers.tin}
+#read {.tt/3k/modules/rolm.tin}
 #read {.tt/3k/modules/combat_que.tin}
 #read {.tt/3k/modules/mask.tin}
 #read {.tt/3k/modules/watchdog.tin}
 
-#variable {corpsetrig_on} {1}
+#variable {corpsetrig_on} {2}
 #variable {freezer} {off}
 #variable {cocoon} {0}
 #variable {resume_action} {.resume}
-
-#nop change this to the room vnum that you usually anchor in
-#variable {winchroom} {152}
 
 #nop helper functions
 #function {tolower}
@@ -39,7 +37,7 @@
 	#if {"%1" == "ON" || "%1" == "on"} {
 		#variable {result} {<afa>%1<088>}
 	} {
-		#variable {result} {<faa>%1<088>}
+		#variable {result} {<218>%1<088>}
 	}
 }
 
@@ -49,7 +47,7 @@
 	#if {"%1" == "ON" || "%1" == "on"} {
 		#variable {result} {%2%3<088>}
 	} {
-		#variable {result} {<faa>%3<088>}
+		#variable {result} {<218>%3<088>}
 	}
 }
 
@@ -58,31 +56,39 @@
 	#math {result} {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower]}
 }
 
-#nop define on_char_reconnect & on_char_login in your character file for configuring defaults
-#alias {on_char_login} { } {9}
-#alias {on_guild_login} { } {9}
-#alias {on_char_reconnect} { } {9}
-#alias {on_guild_reconnect} { } {9}
-
 #action {^3Kingdoms welcomes you!}
 {
-	#delay {1} {
-		on_char_login;
-		#delay {1} {on_guild_login}
-	}
+	#if {$watchdog_module} {
+		startwatchdog
+	};
+	#if {$gswap_module} {
+        #nop load the previous used guild file;
+        #delay {1} {gswapinit}
+    };
+    #nop perform the guild's login actions;
+	#delay {2} {on_login}
 }
 
 #action {^3Kingdoms welcomes you back from linkdeath}
 {
-	#delay {1} {
-		on_char_reconnect;
-		#delay {1} {on_guild_reconnect}
-	}
+	#if {$watchdog_module} {
+		startwatchdog
+	};
+	#if {$gswap_module} {
+        #nop load the previous used guild file;
+        #delay {1} {gswapinit}
+    };
+    #nop perform the guild's reconnect actions;
+    #delay {2} {on_reconnect}
 }
 
+#action {^There are no corpses in the freezer!} {#variable {corpses[freezer]} {0}}
+#action {^You pick up %* and touch it to the frame} {#math {corpses[freezer]} {$corpses[freezer] + 1}}
 #action {^{You keep \*?Tech Ultra-Cooler.}} {#variable cooler on}
+#action {^{You keep \*?Mythic Knight's Shield}} {#gag {backward.$}}
 #action {^The freezer can hold no more corpses!} {#var corpses[freezer] 50}
 #action {{You keep \*?Death\'s Freezer \((\d+) corpses\)\.}} {#variable corpses[freezer] %2;#variable freezer on} {1}
+#action {^You have no freezer} {#var freezer off;#var corpses[freezer] 0}
 #action {^{There is no reason to \'{slab|deslab}\' here\.}}
 {
 	#variable freezer off;
@@ -103,42 +109,13 @@
 #alias {sideon} {redraw map on;redraw canvas on}
 #alias {sideoff} {redraw map off;redraw canvas off}
 
-#nop helpful rolm stuff
-#alias {setwr} {#variable {winchroom} {$roomvnum}}
-#action {^The light fades and you materialize elsewhere....}
-{
-    #if {"$winchroom" != ""} {#map goto $winchroom};
-}
-#action {^A small golden strand falls from the relic and imbeds itself into the ground.}
-{
-    #variable {winchroom} {$roomvnum};
-}
-
-#nop mythic knight's shield
-#nop override these aliases by defining them elsewhere and add code to repeat/autocombat bash
-#alias {on_kshield_equip} { } {9}
-#alias {on_kshield_remove} { } {9}
-
-#action {^Your training from the Grand Master Knight reminds you to train 'bash'}
-{
-	on_kshield_equip;
-	#gag {backward.$}
-}
-#action {^You carefully remove the shield}
-{
-	on_kshield_remove;
-	#ungag {backward.$}
-}
-#action {^There is no reason to 'bash' here}
-{
-	on_kshield_remove;
-	#ungag {backward.$}
-}
+#action {^Your training from the Grand Master Knight reminds you to train 'bash'} {on_kshield_equip}
+#action {^You carefully remove the shield} {on_kshield_remove}
+#action {^There is no reason to 'bash' here} {on_kshield_remove}
 
 #nop lord stanley's cup
-#nop override this alias by defining it elsewhere
-#alias {on_hockey_fan} {#if {$mask_module} {guild_reclaim}} {9}
 #action {^Out of nowhere a crazed hockey fan leaps towards the Cup} {on_hockey_fan} {1}
+#action {^A hockey fan sprints out and dies.} {on_hockey_fan} {1}
 
 #nop supplements to 'cbrief on mo'
 #gag {^%* tickled %* in the stomach}
@@ -147,12 +124,17 @@
 #gag {^You swing the Sword of Spirit at your foe}
 #gag {^You lash out with the Sword of Spirit}
 #gag {^>$}
-#gag {^Your party overwhelms the Beatle's defenses}
+
+#gag {^Your party overwhelms the Beatle}
+#gag {^Your form shimmers and becomes impenetrable.}
+#gag {^You have become grounded in this plane yet again.}
+
+#action {^Like a bolt of lighting you shoot to Pinnacle in an instant.} {mapgo cot}
 
 #nop helpful area aliases & actions
 #alias {zhb1} {go zelligars;scaler 130;n;n;w;n;nw;e;n;e;e;s;s}
 #alias {zhb2} {search shelves;get gloves;n;n;w;w;w;s;get key;n;e;e;e;s;s;e;e;e;n;e;e;e;n;n;n;n;w;w;w;w;s;s;s;s;unlock door;open door;w;get key;e;n;n;n;n;e;e;e;e;s;s;s;s;w;w;w;s;w;w;w;n;n;w;w;n;unlock door;open door;w;w;s;s;sw;w;w;w;n;nw;e;e;e;e;n;ne;e;e;e}
-#alias {secz40} {#action {^Section 40 (ne,n,s)} {#map go 25088};#send !enter $sectionz[40];pause game;play;unpause game;botclear;ba sectionz40_short;cycle 1;#delay {0.5} {#map go 25088}}
+#alias {secz40} {#action {^Section 40 (ne} {#map go 25088};#send !enter $sectionz[40];pause game;play;unpause game;botclear;ba sectionz_short40;cycle 1;#delay {0.5} {#map go 25088}}
 #action {{Z|z} {R|r}eset} {#bell}
 
 
@@ -163,7 +145,7 @@
 
 #action {^[PARTY] %1: {(w|W)here are we\?}}
 {
-	#if {$bot == 1} {
+	#if {"$bot" == "1"} {
 		#send !ptell We are in $bots[stepper], room #$roomvnum, step $path_pos/$path_len. My target is at $enemy[hp]% health.
 	}
 }
@@ -182,5 +164,25 @@
 
 #action {^You have no cocoon.}
 {
-	#variable {cocoon} {0};
+	#variable {cocoon} {0}
 } {1}
+
+#nop mapping stuff
+#nop noting other useful mapping functions: mapsearch, findhere
+#alias {mappath}
+{
+	#nop load a path from current room to the roomnote - useful for restarting a stepper from partway;
+	#map {find} {{roomnote} {%0%*}}
+}
+
+#alias {mapgo}
+{
+	#nop override the default mapgo to add the wildcard on the end of the roomnote;
+	#map goto {roomnote} {%0%*}
+} {1}
+
+#alias {mapgo2}
+{
+	#nop move the map to the specified room vnum;
+	#map goto %0
+}

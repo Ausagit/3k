@@ -48,7 +48,7 @@
         rating    - number from 0 to 9 to indicate the dungeon/area difficulty this ability should only be used in, 0 = que ignored, 9 = max
         when      - start/high/med/low/end/any, first few rounds or at any round, high health, med health or low health
         priority  - 0-999 priority - the que is processed from highest priority to lowest
-        repeat    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 2=non-repeatable, locked on use
+        repeat    - flag to indicate if the ability can be used more than once per fight: 1=repeatable, used whenever ready=1, 0=non-repeatable, locked on use
         cmd       - the command to send to the mud, can include some scripting elements
         condition - script to add a custom condition, e.g. '$:mobname' == 'brain'  Note $: instead of $ and ' instead of "        
         ready     - flag to indicate the ability is on/off cooldown: 1=ready, 2=on cd
@@ -121,7 +121,7 @@ _cq_init
             _showcombatque;
         };
         #case "add" {
-            #regexp {%0} {{add ([a-zA-z0-9_]{1,12})\/(-?[0-9])\/(start|end|high|med|low|any)\/([0-9]{1,3})\/([0-9])\/([a-zA-Z0-9_\$\:='@\( ]+)(?:\/)?(.*)?}} {
+            #regexp {%0} {{add ([a-zA-Z0-9_]{1,12})\/(-?[0-9])\/(start|end|high|med|low|any)\/([0-9]{1,3})\/([0-9])\/([a-zA-Z0-9_\$\:='@\( ]+)(?:\/)?(.*)?}} {
                 #nop cq add <name>/<rating>/<when>/<priority>/<repeat>/<cmd>/<condition>;
                 #nop cq add   %2     %3       %4      %5         %6     %7       &8;
                 #nop some housekeeping;
@@ -221,7 +221,7 @@ _cq_init
                 #if {$combat_que_manual == 0} {
                     #ticker {combat_que} {cq run} {1}
                 };
-                #echo {<028>Combat que enabled.<088>}
+                #echo {<028>Combat que <128>enabled.<088>}
             } {
                 #echo {<028>Combat que cannot be enabled because it's empty.<088>}
             }
@@ -229,7 +229,7 @@ _cq_init
         #case "off" {
             #variable {combat_que_on} {0};
             #unticker {combat_que};
-            #echo {<028>Combat que disabled.<088>}
+            #echo {<028>Combat que <018>disabled<028>.<088>}
         };
         #case "manual" {
             #nop toggle manual mode on/off;     
@@ -312,7 +312,7 @@ _cq_init
             _showcombatque ready;
         };
         #case "run" {
-            #if {$combat_que_on == 1 && $mip[round] > 0 && $enemy[hp] > 0}
+            #if {$combat_que_on == 1 && ($mip[round] > 0 || "%2" != "") && ($enemy[hp] > 0 || "%2" != "")}
             {
                 #list {combat_que} {indexate} {priority};
                 #list {combat_que} {order};
@@ -333,7 +333,7 @@ _cq_init
                             #continue
                         };      
                         #if {@check_when{$index} == 0} {
-                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when: $combat_que[$index][when]locked}};
+                            #if {$cq_debug} {#echo {CQ: $combat_que[$index][name] not executed: when: $combat_que[$index][when]}};
                             #continue
                         };        
                         #if {@check_condition{$index} == 0} {
@@ -640,30 +640,23 @@ _cq_init
     }
 } {1}
 
-#action {^You touch the %1 rune on the artifact and hear a soft *click*}
+
+#nop events from the rolm.tin module
+#alias {on_rolm_rune_recharged}
 {
-    #format {touching_rune} {%l} {%1}
+    update_cooldown %1 1
 }
 
-#action {^Nothing happens after touching that activated rune}
+#alias {on_rolm_rune_activated}
 {
-    update_cooldown $touching_rune 0
+    update_cooldown %1 0
 }
 
-#action {^Upon the %1, the %2 rune glows brightly again.}
+#alias {on_rolm_rune_failed}
 {
-    update_cooldown %2 1
+    update_cooldown %1 0
 }
 
-#action {^   whispering a dark prayer to the provenance of an ancient god...}
-{
-    update_cooldown raven 0
-}
-
-#action {^A charge of emerald energy from the relic fractally crawls across your head}
-{
-    update_cooldown owl 0
-}
 
 #action {^A shimmering sphere of energy engulfs you}
 {

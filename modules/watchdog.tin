@@ -1,7 +1,11 @@
 #class {watchdog} {kill}
 #class {watchdog} {open}
 
+#variable {watchdog_module} {1}
 #variable {watchdogcount} {0}
+
+#nop define this this alias in your guild file to perform actions just before the stepper restars;
+#nop #alias {on_watchdog_resume} { actions }
 
 #alias {startwatchdog}
 {
@@ -13,7 +17,7 @@
 			#if {$watchdogcount >= 3} {
 				#echo {<fca>*WATCHDOG RESUME*<088>};
 				#variable {watchdogcount} {0};
-				..
+				wdr;
 			}
 		} {
 			#variable {watchdogcount} {0}
@@ -26,6 +30,15 @@
 	#echo {<fca>*WATCHDOG STOPPED*<088>};
 	#kill {ticker} {watchdog};
 	#variable {watchdogcount} {0}
+}
+
+#nop manually restart if needed;
+#alias {wdr}
+{
+	#variable {watchdogcount} {0};
+	corpsetrig;
+	on_watchdog_resume;
+	..
 }
 
 #class {watchdog} {close}

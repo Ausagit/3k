@@ -1,0 +1,96 @@
+#nop gswap.tin
+/*
+    Usage:
+    1) Include this file from your character file
+    2) Define two aliases in your guild file and add any actions you wish to perform when gswapping to or from that gobj
+        a) on_gswap_leave
+        b) on_gswap_enter
+    3) 
+
+*/
+
+#class {gswap} {kill}
+#class {gswap} {open}
+
+#class {mysave} {kill}
+#class {mysave} {read} {.tt/char/$ses_name-save.tin}
+#class {mysave} {size} {mysavesize};
+
+#variable {gswap_module} {1}
+
+#if {$mysavesize == 0} {
+	#echo {Character save file not found, creating default.};
+	#class {mysave} {kill};
+	#class {mysave} {open};
+	#variable {saved[gswap]} {};
+	#class {mysave} {close};
+	#class {mysave} {save};
+	#class {mysave} {write} {.tt/char/$ses_name-save.tin};
+}
+
+#alias {saveme}
+{
+	#class {mysave} {write} {.tt/char/$ses_name-save.tin};
+	#echo {<faf>Saved .tt/char/$ses_name-save.tin.<088>}
+}
+
+#alias {loadme}
+{
+    #class {mysave} {kill};
+	#class {mysave} {read} {.tt/char/$ses_name-save.tin};
+    #echo {<faf>Loaded .tt/char/$ses_name-save.tin.<088>}
+}
+
+#alias {gswap}
+{
+    #if {"%1" == ""} {
+        #echo {<faf>Gswap: $saved[gswap], Guild: $guild<088>}
+    };
+    #elseif {"%1" == "$guild"} {
+        #echo {<faf>You are already in that gswap.<088>}
+    };
+    #else {
+        #send !gsave;
+        #nop perform any actions in the current guild before swapping;
+        on_gswap_leave;
+        #nop change to the new guild (assumes you are in the gswap room);
+        #send !gswap %1;
+
+        #delay {1} {
+            #class $guild kill;
+            #nop read the new guild file;
+            #read {.tt/3k/guilds/%1.tin};
+
+            #nop check that the loaded guild matches;
+            #if {"$guild" == "%1"} {
+                #variable {saved[gswap]} {%1};
+                saveme;
+                #echo {<faf>Gswapped to %1.<088>};
+                on_gswap_enter
+            } {
+                #echo {<faf>Gswap failed.<088>}
+            }
+        };
+        #delay {2} {
+            on_reconnect
+        }
+    }
+}
+
+#nop call when logging in and reconnecting
+#alias {gswapinit}
+{
+    #if {"$saved[gswap]" != ""} {
+        #read {.tt/3k/guilds/$saved[gswap].tin}
+    };
+    #if {"$guild" == ""} {
+        #echo {<faf>No guild loaded, use gswap <guild> to set your current guild.<088>}
+    } {
+        #echo {<faf>Loaded guild, $guild.<088>}
+    }
+}
+
+#class {gswap} {close}
+
+
+#nop You cannot swap so quickly.  Wait 57 seconds

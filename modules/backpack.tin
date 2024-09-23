@@ -23,6 +23,9 @@
 #alias {trashbpall} {#loop 1 $backpackcount cnt {trash all from backpack $cnt}}
 #alias {sellbpall} {#loop 1 $backpackcount cnt {sell all from backpack $cnt}}
 #alias {donatebpall} {#loop 1 $backpackcount cnt {donate all from backpack $cnt}}
+#alias {findbpall} {#loop 1 $backpackcount cnt {get %0 from backpack $cnt}}
+
+#alias {boxbpall} {#loop 1 $backpackcount cnt {get all from backpack $cnt;put all in box}}
 
 #alias {stacknext}
 {
@@ -33,4 +36,13 @@
 	}
 }
 
+#action {^There is no reason to 'stack' here.}
+{
+	#nop turn off the module if you are not carrying any backpacks;
+	#variable {backpack_module} {0}
+}
+
+#alias {findbp} {#loop 1 $backpackcount cnt {get %0 from backpack $cnt}}
+
 #class {backpack} {close}
+
