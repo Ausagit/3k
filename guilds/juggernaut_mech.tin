@@ -1,0 +1,212 @@
+#nop juggernaut_mech.tin
+/*
+	Mech loadouts that save through logins.
+    Type 'mech help' in-game for more info.
+*/
+#class {juggernautmech} {kill}
+#class {juggernautmech} {open}
+
+#class {mechloadoutlist} {kill}
+#class {mechloadoutlist} {read} {.tt/char/$ses_name-mech.tin}
+#class {mechloadoutlist} {size} {lsize}
+
+#if {$lsize == 0} {
+	#echo {Power file not found, creating default.};
+	#class {mechloadoutlist} {kill};
+	#class {mechloadoutlist} {open};
+	#variable {mechloadouts} {};
+	#class {mechloadoutlist} {close};
+	#class {mechloadoutlist} {save};
+	#class {mechloadoutlist} {write} {.tt/char/$ses_name-mech.tin};
+	#unvariable {lsize}
+}
+
+#alias {mechload} {#read {.tt/3k/guilds/juggernaut_mech.tin}}
+
+#nop alias for configuring mech loadouts
+#alias {mech}
+{
+	#switch {"%1"} {
+		#case "add" {
+			#regexp {%0} {{add ([a-zA-Z0-9_\-]{1,20}) ([1-9][0-9]{0,2}) ([1-9][0-9]{0,2}) ([1-9][0-9]{0,2}) ([1-9][0-9]{0,2})(?:\s)?([a-z,]+)?(?:\s)?([a-z,]+)?}} {
+				#local {cdname} {};
+                #format {cdname} {%l} {&2};
+				#variable {mechloadouts[$cdname][powerplant]} {&3};
+				#variable {mechloadouts[$cdname][mount]} {&4};
+				#variable {mechloadouts[$cdname][armor]} {&5};
+				#variable {mechloadouts[$cdname][repair]} {&6};
+				#variable {mechloadouts[$cdname][afocus]} {&7};
+				#variable {mechloadouts[$cdname][dfocus]} {&8};
+				#class {mechloadoutlist} {write} {.tt/char/$ses_name-mech.tin};
+				#echo {<258>Mech loadout <158>$cdname<258> added.<088>}
+			} {
+				#echo {<258>Syntax is <158>mech add <name> <powerplant> <mount> <armor> <repair> [assault focus] [defend focus]<258>.<088>}
+			}
+		};
+		#case "remove" {
+			#unvariable {mechloadouts[%2]};
+			#echo {<258>Mech loadout <158>%2<258> removed.<088>};
+			#class {mechloadoutlist} {write} {.tt/char/$ses_name-mech.tin}
+		};
+		#case "focus" {
+			#if {"%2" != "" && "$mechloadouts[%2][powerplant]" != ""} {
+				#if {($mechloadouts[%2][powerplant] + $mechloadouts[%2][mount]) > ($mechloadouts[%2][repair] + $mechloadouts[%2][armor])} {
+					#nop offensive mech;
+					#send !support assault $mechloadouts[%2][afocus]
+					
+				} {
+					#nop defensive mech;
+					#send !support defend $mechloadouts[%2][dfocus]
+				}
+			} {
+				#echo {<258>Mech loadout <158>%2<258> not found.<088>}
+			}
+		};
+		#case "load" {
+			#if {"%2" != "" && "$mechloadouts[%2][powerplant]" != ""} {
+                #local {mechdelay} {0};
+                #echo {<258>--> Reconfiguring your mech, please wait approximately 10 seconds.<088>};
+                #variable {multiple} {0};
+                #gag {^The computer chirps 'You have upgraded};
+                #gag {!'};
+
+                
+                #send !support reset;
+                #delay {0.2} {
+                    #if {$mechloadouts[%2][powerplant] > 1} {
+                        #echo {<258>--> Assigning powerplant...<088>};
+                        #math {multiple} {$mechloadouts[%2][powerplant] -1};
+                        #$multiple #send !support upgrade powerplant
+                    }
+                };
+                
+                #if {$mechloadouts[%2][mount] > 1} {
+                    #math {mechdelay} {$mechdelay + 1};
+                    #delay {$mechdelay} {
+                        #echo {<258>--> Assigning mount...<088>};
+                        #math {multiple} {$mechloadouts[%2][mount] -1};
+                        #$multiple #send !support upgrade mount
+                    }
+                };                
+                #if {$mechloadouts[%2][armor] > 1} {
+                    #math {mechdelay} {$mechdelay + 1};
+                    #delay {$mechdelay} {
+                        #echo {<258>--> Assigning armor...<088>};
+                        #math {multiple} {$mechloadouts[%2][armor] -1};
+                        #$multiple #send !support upgrade armor
+                    }
+                };
+                #if {$mechloadouts[%2][repair] > 1} {
+                    #math {mechdelay} {$mechdelay + 1};
+                    #delay {$mechdelay} {
+                        #echo {<258>--> Assigning repair...<088>};
+                        #math {multiple} {$mechloadouts[%2][repair] -1};
+                        #$multiple #send !support upgrade repair
+                    }
+                };
+
+                #delay {$mechdelay + 3} {
+                    #if {($mechloadouts[%2][powerplant] + $mechloadouts[%2][mount]) > ($mechloadouts[%2][repair] + $mechloadouts[%2][armor])} {
+                        #nop offensive mech;
+                        #if {"$mechloadouts[%2][afocus]" != ""} {
+                            #delay 1 {#send !support assault $mechloadouts[%2][afocus]}
+                        } {
+                            #if {$mechloadouts[%2][mount] >= 20} {
+                                #delay 1 {#send !support assault fire}
+                            } {
+                                #delay 1 {#send !support assault}
+                            }
+                        }
+                    } {
+                        #nop defensive mech;
+                        #if {"$mechloadouts[%2][dfocus]" != ""} {
+                            #delay 1 {#send !support defend $mechloadouts[%2][dfocus]}
+                        } {
+                            #if {$mechloadouts[%2][armor] >= 100} {
+                                #delay 1 {#send !support defend edged,blunt,fire,radiation,poison}
+                            };
+                            #elseif {$mechloadouts[%2][armor] >= 90} {
+                                #delay 1 {#send !support defend edged,blunt,fire,poison}
+                            };
+                            #elseif {$mechloadouts[%2][armor] >= 80} {
+                                #delay 1 {#send !support defend edged,blunt,fire}
+                            };
+                            #elseif {$mechloadouts[%2][armor] >= 70} {
+                                #delay 1 {#send !support defend edged,blunt}
+                            };
+                            #elseif {$mechloadouts[%2][armor] >= 10} {
+                                #delay 1 {#send !support defend edged}
+                            };
+                            #else {
+                                #delay 1 {#send !support defend blunt}
+                            }
+                        }
+                    };
+
+                    #delay {1} {
+                        #echo {<258>--> Mech loadout <158>%2<258> loaded!<088>};
+                        #ungag {^The computer chirps 'You have upgraded};
+                        #ungag {!'};
+                    };
+                    #delay {3} {support}
+                }
+			} {
+				#nop invalid loadout;
+				#echo {<258>Mech loadout <158>%2<258> not found.<088>}
+			}
+		};
+		#case "help" {
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+			#echo {$jthemes[$jset[theme]][headings]Mech Command Help<088>};
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+			#echo {$jthemes[$jset[theme]][subheadings]%-s<088>\n   %s} {load <name>}	{Load the specified loadout including systems & focus};
+			#echo {$jthemes[$jset[theme]][subheadings]%s<088>\n   %s} {focus <name>}	{Load the specified focus only, asault or defense based on system values};
+			#echo {$jthemes[$jset[theme]][subheadings]%s<088>\n   %s} {add <name> <Powerplant> <Mount> <Armor> <Repair> [Assault Focus] [Defense Focus]}	{Add or update a loadout with the specified system and optional assault and defense focus};
+			#echo {$jthemes[$jset[theme]][subheadings]%s<088>\n   %s} {remove <name>} {Delete the specified loadout};
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+		};
+		#case "" {
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+            #echo {$jthemes[$jset[theme]][headings]%-20s %-3s %-3s %-3s %-3s %-3s %-13s %-20s<088>} {Loadout} {Pow} {Mnt} {Arm} {Rep} {Tot} {Assault Focus} {Defense Focus};
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+			#if {&{mechloadouts[]} == 0} {
+				#echo {You have no configured mech loadouts} {$mechout}
+			} {
+				#local {mltotal} {0};
+				#local {mlmode} {};
+				#foreach {*mechloadouts[%*]} {name} {
+					#math {mltotal} {$mechloadouts[$name][powerplant] + $mechloadouts[$name][mount] + $mechloadouts[$name][repair] + $mechloadouts[$name][armor]};
+					#if {($mechloadouts[$name][powerplant] + $mechloadouts[$name][mount]) > ($mechloadouts[$name][repair] + $mechloadouts[$name][armor])} {
+						#variable {mlmode} {As}
+					}{
+						#variable {mlmode} {De}
+					};
+					#local {dmode} {$mechloadouts[$name][dfocus]};
+					#replace {dmode} {edged} {ed};
+					#replace {dmode} {blunt} {bl};
+					#replace {dmode} {fire} {fi};
+					#replace {dmode} {radiation} {ra};
+					#replace {dmode} {electric} {el};
+					#replace {dmode} {ice} {ic};
+					#replace {dmode} {poison} {po};
+					#echo {%s%-20s %-3s %-3s %-3s %-3s %-3s %-13s %-20s<088>} {@modeansi{$mlmode}} {$name} {$mechloadouts[$name][powerplant]} {$mechloadouts[$name][mount]} {$mechloadouts[$name][armor]} {$mechloadouts[$name][repair]} {$mltotal} {$mechloadouts[$name][afocus]} {$dmode};
+				};
+			};
+			#draw $jthemes[$jset[theme]][lines] scroll line 1 1 1 80;
+		}
+	}
+}
+
+#function {compareloadouts}
+{
+	#if {($mechloadouts[%1][powerplant] == $mechloadouts[%2][powerplant]) &&
+		 	($mechloadouts[%1][mount] == $mechloadouts[%2][mount]) &&
+		 	($mechloadouts[%1][armor] == $mechloadouts[%2][armor]) &&
+		 	($mechloadouts[%1][repair] == $mechloadouts[%2][repair])} {
+		#variable {result} {1}
+	} {
+		#variable {result} {0}
+	}
+}
+
+#class {juggernautmech} {close}
