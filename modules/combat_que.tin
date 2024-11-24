@@ -265,7 +265,11 @@ _cq_init
         };
         #case "refresh" {
             #foreach {*combat_que[]} {index} {
-                #variable {combat_que[$index][locked]} {0}
+                #variable {combat_que[$index][locked]} {0};
+                #if {$combat_que[$index][repeat]} {
+                    #nop repeatable abilities won't get their end message displayed, so force them to reset;
+                    #variable {combat_que[$index][ready]} {1}
+                }
             };
             #if {$cq_debug} {#echo {CQ: refreshed}}
         };
