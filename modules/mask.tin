@@ -7,12 +7,12 @@
 	trigger a reclaim. Can be easily modified to suit your guild preferences.
 
 	Change the order of corpse usage in the _select_corpse to your liking.
+	Defaults to: follower, freezer, cooler, coffin, inventory
 
 	Notes:
 		Be careful in areas where your guild follower may not be able to follow.
-		Assumes necromancer absorb is set to inventory first, then room.
-		Corpse usage order: coffin, freezer, cooler, follower, self
-
+		Assumes necromancer absorb is set to room first.
+		
 	Variables:
 	$mask_on			- 0: off, 1: own mask, 2: anyone's mask
 	$recently_reclaimed	- prevent simultaneous reclaims and allow for GP to settle
@@ -24,6 +24,7 @@
 	mask on			- Trigger from your mask only. Glyph is forced off when not reclaiming.
 	mask all		- Trigger from anyone's mask. Manage the glyph manually.
 	mask off		- Default, reclaim instantly.
+	mask active		- Equivalent to mask all;trace glyph
 	mask			- Show the mask and glyph status
 	mask debug		- toggles debug mode for tracking issues
 	mu [qty]		- reclaim a single, or multiple corpses
@@ -256,6 +257,21 @@
 
 	_mask_debug MASK: select_corpse $sel_qty;
 
+	#nop follower corpses are assumed to be preserved and reclaimed straight away;
+	#if {$sel_qty > 0 && $corpses[follower] > 0} {
+		#if {$corpses[follower] >= $sel_qty} {
+			_mask_debug MASK: selecting follower $sel_qty;
+			#$sel_qty {#send !=drop corpse};
+			guild_reclaim $sel_qty;
+			#local {sel_qty} {0}
+		} {
+			_mask_debug MASK: selecting follower $corpses[follower];
+			#$corpses[follower] {#send !=drop corpse};
+			guild_reclaim $corpses[follower];
+			#math {sel_qty} {$sel_qty - $corpses[follower]}
+		}
+	};
+
 	#nop freezer corpses are always fresh and wait for the mask to clone;
 	#if {$sel_qty > 0 && $corpses[freezer] > 0} {
 		#if {$corpses[freezer] >= $sel_qty} {
@@ -322,21 +338,6 @@
 				#math {unwrapped_qty} {$unwrapped_qty + $corpses[coffin]}
 			};
 			#math {sel_qty} {$sel_qty - $corpses[coffin]}
-		}
-	};
-
-	#nop follower corpses are assumed to be preserved and reclaimed straight away;
-	#if {$sel_qty > 0 && $corpses[follower] > 0} {
-		#if {$corpses[follower] >= $sel_qty} {
-			_mask_debug MASK: selecting follower $sel_qty;
-			#$sel_qty {#send !=drop corpse};
-			guild_reclaim $sel_qty;
-			#local {sel_qty} {0}
-		} {
-			_mask_debug MASK: selecting follower $corpses[follower];
-			#$corpses[follower] {#send !=drop corpse};
-			guild_reclaim $corpses[follower];
-			#math {sel_qty} {$sel_qty - $corpses[follower]}
 		}
 	};
 
@@ -416,7 +417,7 @@
 			#$sel_qty {salute corpse}
 		};
 		#case "mage" {
-			#$sel_qty {cast corpse blast}
+			#$sel_qty {cast spell tap on corpse;cast corpse blast}
 		};
 		#case "juggernaut" {
 			#$sel_qty {fdeener}
