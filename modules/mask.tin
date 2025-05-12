@@ -3,8 +3,9 @@
 	Script for handling corpses with or without The mask of Gemino Mortis.
 	This script allows the mask to be active or inactive, only reacting to mask
 	events when the reclaim (mu) script is running. 
-	Use the mu alias from update_status when your desired conditions are met to
-	trigger a reclaim. Can be easily modified to suit your guild preferences.
+	Use the mu alias from update_status (or similar) when your desired
+	conditions are met to trigger a reclaim.
+	Can be easily modified to suit your guild preferences.
 
 	Change the order of corpse usage in the _select_corpse to your liking.
 	Defaults to: follower, freezer, cooler, coffin, inventory
@@ -12,30 +13,34 @@
 	Notes:
 		Be careful in areas where your guild follower may not be able to follow.
 		Assumes necromancer absorb is set to room first.
+
+	Events:
+		on_mask_activating - called just before corpses are unwrapped
+		on_mask_reclaimed  - called just after corpses are reclaimed
+		on_mask_completed  - called when the entire process is complete
+		on_mask_cloned	   - called just after corpses are successfully cloned
+		on_mask_status     - called when mask status changes (off/on/active) and passes as argument (0/1/2)
 		
 	Variables:
-	$mask_on			- 0: off, 1: own mask, 2: anyone's mask
-	$recently_reclaimed	- prevent simultaneous reclaims and allow for GP to settle
-	$mask_check			- set to 1, if 1 after 3s during a reclaim, mask failed, reclaim
-	$ses_name			- your name from Inix's tintin setup
-	$guild				- your guild name from Inix's tintin setup
+	mask_status			- 0: off, 1: on, anyone's mask, 2: forced on and anyone's mask
+	recently_reclaimed	- prevent simultaneous reclaims and allow for GP to settle
+	mask_check			- set to 1, if 1 after 3s during a reclaim, mask failed, reclaim
+	guild				- your guild name from Inix's tintin setup
 
 	Usage:
-	mask on			- Trigger from your mask only. Glyph is forced off when not reclaiming.
-	mask all		- Trigger from anyone's mask. Manage the glyph manually.
+	mask on			- Trigger from mask splits (yours or anyones). Glyph is forced off when not reclaiming.
 	mask off		- Default, reclaim instantly.
-	mask active		- Equivalent to mask all;trace glyph
+	mask active		- Trigger from mask splits and force the glyph on
 	mask			- Show the mask and glyph status
-	mask debug		- toggles debug mode for tracking issues
 	mu [qty]		- reclaim a single, or multiple corpses
 
 	Tip:
-	Add the following line to the start of update_status.
+	Add the following line to the start of update_status (if you don't have it already)
 	#math {my[gp1][perc]} {$my[gp1][current] * 100 / $my[gp1][max]};
 
 	Example code:
 	Use in update_status or hp trigger, etc. Adjust values to suit your circumstance.
-	Note that update_status may fire several times in a round, and mip data is not reliable.
+	Note that update_status may fire several times in a round, and mip data can often be unreliable.
 	Consider using data from hp bar captures instead.
 	
 	#if {($my[gp1][perc] < 50) && $enemy[hp] > 5} {
@@ -56,91 +61,68 @@
 */
 
 #nop housekeeping
-#if {"$corpses[inventory]" == ""} {#variable {corpses[inventory]} {0}}
-#if {"$corpses[coffin]" == ""} {#variable {corpses[coffin]} {0}}
-#if {"$corpses[freezer]" == ""} {#variable {corpses[freezer]} {0}}
-#if {"$corpses[cooler]" == ""} {#variable {corpses[cooler]} {0}}
-#if {"$corpses[follower]" == ""} {#variable {corpses[follower]} {0}}
+#if {"$corpses[inventory]" == ""} {#variable corpses[inventory] 0}
+#if {"$corpses[coffin]" == ""} {#variable corpses[coffin] 0}
+#if {"$corpses[freezer]" == ""} {#variable corpses[freezer] 0}
+#if {"$corpses[cooler]" == ""} {#variable corpses[cooler] 0}
+#if {"$corpses[follower]" == ""} {#variable corpses[follower] 0}
 
 #class {mask} {kill}
 #class {mask} {open}
 
-#variable {mask_module} {1}
-#variable {mask_on} {0}
-#variable {recently_reclaimed} {0}
-#variable {mask_check} {0}
-#variable {mask_glyph_state} {unknown}
-#variable {mask_debugging} {0}
+#variable mask_module 1
+#variable mask_status 0
+#variable recently_reclaimed 0
+#variable mask_check 0
+#variable mask_glyph_state {unknown}
 
-
-#alias {on_mask_activated}
-{
-	#nop define these aliases in your guild file to fire just before corpses are unwrapped
-} {9}
-#alias {on_mask_reclaimed}
-{
-	#nop define these aliases in your guild file to fire just after corpses are reclaimed
-} {9}
-#alias {on_mask_completed}
-{
-	#nop define these aliases in your guild file to fire when the entire process is complete
+#nop you will require this function for the events to work but you can replace with an existing version
+#function {alias_exists} {
+	#info aliases save;
+	#list info[ALIASES] indexate arg1;
+	#list info[ALIASES] find %0 result;
+	#if {$result} {
+		#variable result 1
+	} {
+		#variable result 0
+	}
 } {9}
 
-#alias {on_mask_cloned}
-{
-	#nop define these aliases in your guild file to fire when the entire process is complete
-} {9}
-
-#alias {mask}
-{
+#alias {mask} {
     #switch {"%1"} {
         #case "on" {
-            #variable {mask_on} {1};
-            #echo {<ecf>You will use your mask only. Glyph usage is automatic.<088>};
+            #variable mask_status 1;
+			#if {@alias_exists{on_mask_status}} {on_mask_status $mask_status};
 			#if {"$mask_glyph_state" == "unknown" || "$mask_glyph_state" == "on"} {
 				#nop make sure the glph is off as the default mask on state;
 				#send !trace glyph
 			}
         };
         #case "off" {
-            #variable {mask_on} {0};
-            #echo {<ecf>You will not use any masks, and will reclaim instantly.<088>};
+            #variable mask_status 0;
+			#if {@alias_exists{on_mask_status}} {on_mask_status $mask_status};
 			#if {"$mask_glyph_state" == "unknown" || "$mask_glyph_state" == "on"} {
 				#nop toggle the glyph to ensure it's off;
 				#send !trace glyph
 			}
         };
-        #case "all" {
-            #variable {mask_on} {2};
-            #echo {<ecf>You will now use anyone's mask. Glyph usage is manual.<088>};
-			#if {"$mask_glyph_state" == "unknown"} {
+        #case "active" {
+            #variable mask_status 2;
+			#if {@alias_exists{on_mask_status}} {on_mask_status $mask_status};
+			#if {"$mask_glyph_state" == "unknown" || "$mask_glyph_state" == "off"} {
 				#nop get the glyph state, will throw errors if you have no mask - ignore;
-				#send !trace glyph;
 				#send !trace glyph
 			}
         };
-		#case "active" {
-			mask all;
-			#send !trace glyph
-		};
-		#case "debug" {
-			#if {$mask_debugging} {
-				#variable mask_debugging 0;
-				#echo {<ecf>Mask debugging is off.<088>}
-			} {
-				#variable mask_debugging 1;
-				#echo {<ecf>Mask debugging is on.<088>}
-			}
-		};
         #default {
-			#local {masktrigger} {};
-			#local {maskglyph} {};
-            #if {$mask_on == 1} {
-                #variable {masktrigger} {You will trigger from your mask only}
-            }; #elseif {$mask_on == 2} {
-                #variable {masktrigger} {You will trigger from anyone's mask}
+			#local masktrigger {};
+			#local maskglyph {};
+            #if {$mask_status == 1} {
+                #variable masktrigger {You will trigger from mask splits}
+            }; #elseif {$mask_status == 2} {
+                #variable masktrigger {The mask is forced on}
             }; #else {
-                #variable {masktrigger} {You will use corpse(s) instantly,}
+                #variable masktrigger {You will use corpse(s) instantly,}
             };
 			#echo {<ecf>%s and the glyph is %s.<088>} {$masktrigger} {$mask_glyph_state}
         }
@@ -148,235 +130,221 @@
 }
 
 #nop use manually or from a script to replesnish GP1/2. Optional argument is number of corpses to attempt to reclaim.
-#alias {mu}
-{
-	#if {$recently_reclaimed == 1} {
+#alias {mu} {
+	#if {$recently_reclaimed} {
 		#echo {<ecf>You must wait before reclaiming again.<088>}
 	} {
 		#if {$corpses[inventory] + $corpses[coffin] + $corpses[freezer] + $corpses[cooler] + $corpses[follower] > 0} {
-			on_mask_activated;
+			#if {@alias_exists{on_mask_activating}} {on_mask_activating};
 			_select_corpse %1
 		}
 	}
 }
 
-#action {^The mask shines brightly}
-{
-	#variable {mask_glyph_state} {on};
-	#if {$mask_on == 0} {
+#action {^The mask shines brightly} {
+	#variable mask_glyph_state {on};
+	#if {!$mask_status} {
 		#nop mask is off, turn glyph off;
 		#send !trace glyph
-	}; #elseif {$mask_on == 1 && $mask_check == 0} {
+	};
+	#elseif {$mask_status == 1 && !$mask_check} {
 		#nop mask is on, not reclaiming, turn glyph off;
 		#send !trace glyph
+	};
+	#elseif {$mask_status == 2} {
+		#nop do nothing
 	}
-} {1}
+}
 
-#action {^The mask emits a dull glow}
-{
-	#variable {mask_glyph_state} {off};
-	#if {$mask_check == 1} {
+#action {^The mask emits a dull glow} {
+	#variable mask_glyph_state {off};
+	#if {$mask_check} {
 		#nop the glyph should be active during a reclaim;
 		#send !trace glyph
+	};
+	#elseif {$mask_status == 2} {
+		#nop the mask should be forced on;
+		#send !trace glyph
 	}
-} {1}
+}
 
-#action {^{You keep \*?The mask of Gemino Mortis.*\(worn}}
-{
-	#nop automatically turn the mask on when you keep it and it's worn;
-	mask on
-} {1}
+#action {^You keep {\*?The mask of Gemino Mortis[^\(]{1,}(\(worn)?}} {	
+	#if {"%2" != ""} {
+		#nop automatically turn the mask on when you keep it and it's worn;
+		mask on
+	} {
+		mask off
+	}
+}
 
-#action {^You have no mask.}
-{
-	#variable {mask_on} {0};
-	#variable {mask_glyph_state} {unknown}
-} {1}
+#action {^You remove your Mask of Gemino Mortis.} {
+	mask off
+}
 
-#action {^%1's eyes glow bright green upon the fallen}
-{
-	#local {lname} {};
-	#format {lname} {%l} {%1};
-	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
+#action {^You have no mask.} {
+	#variable mask_status 0;
+	#variable mask_glyph_state {unknown}
+}
+
+#action {^%1's eyes glow bright green upon the fallen} {
+	#local lname {};
+	#format lname {%l} {%1};
+	#if {$mask_check && $mask_status} {
 		#nop reclaim the two corpses and reduce the cleanup tracking by one;
 		guild_reclaim 2;
-		#math {cleanup_qty} {$cleanup_qty - 1};
-		on_mask_cloned 2;
-		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
+		#math cleanup_qty {$cleanup_qty - 1};
+		#if {@alias_exists{on_mask_cloned}} {on_mask_cloned 2};
 	} {
-		#variable {mask_check} {0}
+		#variable mask_check 0
 	}
-} {1}
+}
 
-#action {^%1's eyes glow a sickly green upon the fallen}
-{
-	#local {lname} {};
-	#format {lname} {%l} {%1};
-	#if {$mask_check == 1 && (($mask_on == 1 && "$lname" == "$ses_name") || $mask_on == 2)} {
+#action {^%1's eyes glow a sickly green upon the fallen} {
+	#local lname {};
+	#format lname {%l} {%1};
+	#if {$mask_check && $mask_status} {
 		#nop reclaim the single corpses and reduce the cleanup tracking by one;
 		guild_reclaim 1;
-		#math {cleanup_qty} {$cleanup_qty - 1};
-		on_mask_cloned 1;
-		_mask_debug MASK: cleanup_qty remaining $cleanup_qty;
+		#math cleanup_qty {$cleanup_qty - 1};
+		#if {@alias_exists{on_mask_cloned}} {on_mask_cloned 1};
 	} {
-		#variable {mask_check} {0}
+		#variable mask_check 0
 	}
-} {1}
+}
 
-#alias {_cleanup_reclaim}
-{
-	#nop after the corpse cloning has occured (or been skipped due to cloned or preserved corpses), cleanup (reclaim) the remainder;
-	#variable {mask_check} {0};
-	#if {$mask_on == 1} {#send !trace glyph};
-	_mask_debug MASK: cleanup_reclaim $cleanup_qty;
-	#if {$cleanup_qty > 0} {
+#alias {_cleanup_reclaim} {
+	#nop after the corpse cloning has occured (or has been skipped due to cloned or preserved corpses), cleanup (reclaim) the remainder;
+	#variable mask_check 0;
+	#if {$mask_status == 1} {#send !trace glyph};
+	#if {$cleanup_qty} {
 		guild_reclaim $cleanup_qty
 	};
 	#delay {finish_reclaim} {_finish_reclaim} {3};
-	on_mask_reclaimed
+	#if {@alias_exists{on_mask_reclaimed}} {on_mask_reclaimed}
 }
 
-#alias {_finish_reclaim}
-{
+#alias {_finish_reclaim} {
 	#nop end the reclaim process - GP should have settled by now;
-	#variable {cleanup_qty} {0};
-	#variable {recently_reclaimed} {0};
-	#variable {mask_check} {0};
-	_mask_debug MASK: finished reclaim;
-	on_mask_completed
+	#variable cleanup_qty 0;
+	#variable recently_reclaimed 0;
+	#variable mask_check 0;
+	#if {@alias_exists{on_mask_completed}} {on_mask_completed}
 }
 
-#alias {_select_corpse}
-{
-	#local {unwrapped_qty} {0};
-	#local {sel_qty} {0};
-	#if {"%1" != ""} {#math {sel_qty} {%1 * 1}};
+#alias {_select_corpse} {
+	#local unwrapped_qty 0;
+	#local sel_qty 0;
+	#if {"%1" != ""} {#math sel_qty {%1 * 1}};
 	#if {$sel_qty < 1} {#local sel_qty 1};
-	#variable {mask_check} {0};
-	#variable {recently_reclaimed} {1};
-
-	_mask_debug MASK: select_corpse $sel_qty;
+	#variable mask_check 0;
+	#variable recently_reclaimed 1;
 
 	#nop follower corpses are assumed to be preserved and reclaimed straight away;
-	#if {$sel_qty > 0 && $corpses[follower] > 0} {
+	#if {$sel_qty && $corpses[follower]} {
 		#if {$corpses[follower] >= $sel_qty} {
-			_mask_debug MASK: selecting follower $sel_qty;
 			#$sel_qty {#send !=drop corpse};
 			guild_reclaim $sel_qty;
-			#local {sel_qty} {0}
+			#local sel_qty 0
 		} {
-			_mask_debug MASK: selecting follower $corpses[follower];
 			#$corpses[follower] {#send !=drop corpse};
 			guild_reclaim $corpses[follower];
-			#math {sel_qty} {$sel_qty - $corpses[follower]}
+			#math sel_qty {$sel_qty - $corpses[follower]}
 		}
 	};
 
 	#nop freezer corpses are always fresh and wait for the mask to clone;
-	#if {$sel_qty > 0 && $corpses[freezer] > 0} {
+	#if {$sel_qty && $corpses[freezer]} {
 		#if {$corpses[freezer] >= $sel_qty} {
-			_mask_debug MASK: selecting freezer $sel_qty;
 			#$sel_qty {#send !deslab};
-			#if {$mask_on == 0} {
+			#if {!$mask_status} {
 				guild_reclaim $sel_qty
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
+				#math unwrapped_qty {$unwrapped_qty + $sel_qty}
 			};
-			#local {sel_qty} {0}
+			#local sel_qty 0
 		} {
-			_mask_debug MASK: selecting freezer $corpses[freezer];
 			#$corpses[freezer] {#send !deslab};
-			#if {$mask_on == 0} {
+			#if {!$mask_status} {
 				guild_reclaim $corpses[freezer]
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $corpses[freezer]}
+				#math unwrapped_qty {$unwrapped_qty + $corpses[freezer]}
 			};
-			#math {sel_qty} {$sel_qty - $corpses[freezer]}
+			#math sel_qty {$sel_qty - $corpses[freezer]}
 		}
 	};
 	
 	#nop cooler corpses are assumed to be fresh and wait for the mask to clone;
-	#if {$sel_qty > 0 && $corpses[cooler] > 0} {
+	#if {$sel_qty && $corpses[cooler]} {
 		#if {$corpses[cooler] >= $sel_qty} {
-			_mask_debug MASK: selecting cooler $sel_qty;
 			#$sel_qty {#send !uncooler corpse};
-			#if {$mask_on == 0} {
+			#if {$mask_status == 0} {
 				guild_reclaim $sel_qty
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
+				#math unwrapped_qty {$unwrapped_qty + $sel_qty}
 			};
-			#local {sel_qty} {0}
+			#local sel_qty 0
 		} {
-			_mask_debug MASK: selecting cooler $corpses[cooler];
 			#$corpses[cooler] {#send !uncooler corpse};
-			#if {$mask_on == 0} {
+			#if {!$mask_status} {
 				guild_reclaim $corpses[cooler]
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $corpses[cooler]}
+				#math unwrapped_qty {$unwrapped_qty + $corpses[cooler]}
 			};
-			#math {sel_qty} {$sel_qty - $corpses[cooler]}
+			#math sel_qty {$sel_qty - $corpses[cooler]}
 		}
 	};
 
 	#nop coffin corpses can be fresh or preserved so should wait for the mask to clone;
-	#if {$sel_qty > 0 && $corpses[coffin] > 0} {
+	#if {$sel_qty && $corpses[coffin]} {
 		#if {$corpses[coffin] >= $sel_qty} {
-			_mask_debug MASK: selecting coffin $sel_qty;
 			#$sel_qty {#send !unwrap};
-			#if {$mask_on == 0} {
+			#if {$mask_status == 0} {
 				guild_reclaim $sel_qty
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $sel_qty}
+				#math unwrapped_qty {$unwrapped_qty + $sel_qty}
 			};
-			#local {sel_qty} {0}
+			#local sel_qty 0
 		} {
-			_mask_debug MASK: selecting coffin $corpses[coffin];
 			#$corpses[coffin] {#send !unwrap};
-			#if {$mask_on == 0} {
+			#if {!$mask_status} {
 				guild_reclaim $corpses[coffin]
 			} {
-				#math {unwrapped_qty} {$unwrapped_qty + $corpses[coffin]}
+				#math unwrapped_qty {$unwrapped_qty + $corpses[coffin]}
 			};
-			#math {sel_qty} {$sel_qty - $corpses[coffin]}
+			#math sel_qty {$sel_qty - $corpses[coffin]}
 		}
 	};
 
 	#nop inventory corpses are assumed to be preserved and reclaimed straight away;
-	#if {$sel_qty > 0 && $corpses[inventory] > 0} {
+	#if {$sel_qty && $corpses[inventory]} {
 		#if {$corpses[inventory] >= $sel_qty} {
-			_mask_debug MASK: selecting inventory $sel_qty;
 			#$sel_qty {#send !unkeep corpse;#send !drop corpse};
 			guild_reclaim $sel_qty;
 			#local {sel_qty} {0}
 		} {
-			_mask_debug MASK: selecting inventory $corpses[inventory];
 			#$corpses[inventory] {#send !drop corpse};
 			guild_reclaim $corpses[inventory];
-			#math {sel_qty} {$sel_qty - $corpses[inventory]}
+			#math sel_qty {$sel_qty - $corpses[inventory]}
 		}
 	};
 
-	#if {$unwrapped_qty > 0} {
+	#if {$unwrapped_qty} {
 		#nop corpses waiting for mask cloning so wait and cleanup;
 		#variable mask_check 1;
-		#if {$mask_on == 1} {#send !trace glyph};
+		#if {$mask_status == 1} {#send !trace glyph};
 		#variable {cleanup_qty} {$unwrapped_qty};
-		_mask_debug MASK: setting cleanup_qty $cleanup_qty;
 		#delay {cleanup_reclaim} {_cleanup_reclaim} {3}
 	} {
 		#nop no corpses waiting for mask cloning so finish up;
 		#delay {finish_reclaim} {_finish_reclaim} {3};
-		on_mask_reclaimed
+		#if {@alias_exists{on_mask_reclaimed}} {on_mask_reclaimed}
 	}
 }
 
-#alias {guild_reclaim}
-{
-	#local {sel_qty} {0};
-	#if {"%1" != ""} {#math {sel_qty} {%1 * 1}};
+#alias {guild_reclaim} {
+	#local sel_qty 0;
+	#if {"%1" != ""} {#math sel_qty {%1 * 1}};
 	#if {$sel_qty < 1} {#local sel_qty 1};
-
-	_mask_debug MASK: guild_reclaim $sel_qty;
 
 	#nop add or update your guild-specific corpse handling here;
 	#switch {"$guild"} {
@@ -426,13 +394,6 @@
 			#echo {** Unhandled guild type in mask.tin! **};
 			#bell
 		}
-	}
-}
-
-#alias {_mask_debug}
-{
-	#if {$mask_debugging} {
-		#echo {<488><ecf>%0<088>}
 	}
 }
 
